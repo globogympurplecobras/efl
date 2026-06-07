@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════
    CONSTANTS & STATE
 ══════════════════════════════════════════ */
-const API_BASE = 'https://api.football-data.org/v4';
-const LS_API_KEY = 'fdApiKey';
+// dawn-rain-2785.hollandtideserver.workers.dev:
+const PROXY_BASE = 'https://efl-proxy.YOUR-SUBDOMAIN.workers.dev/v4';
 const LS_MATCH   = 'currentMatch';
 const CACHE_TTL  = 60 * 60 * 1000; // 1 hour
 const LINEUP_TTL = 15 * 60 * 1000; // 15 min
@@ -72,14 +72,10 @@ let selectorFixtures = [];
 /* ══════════════════════════════════════════
    API + CACHE
 ══════════════════════════════════════════ */
-function getApiKey(){ return localStorage.getItem(LS_API_KEY)||''; }
-
 async function apiGet(path){
-  const key = getApiKey();
-  if(!key) throw Object.assign(new Error('No API key'),{code:'NO_KEY'});
-  const r = await fetch(API_BASE+path,{headers:{'X-Auth-Token':key}});
+  const r = await fetch(PROXY_BASE+path);
   if(r.status===429) throw Object.assign(new Error('Rate limited'),{code:'RATE_LIMIT'});
-  if(r.status===403||r.status===401) throw Object.assign(new Error('Invalid key'),{code:'AUTH'});
+  if(r.status===403||r.status===401) throw Object.assign(new Error('Auth error'),{code:'AUTH'});
   if(!r.ok) throw Object.assign(new Error('API error '+r.status),{code:'ERR'});
   return r.json();
 }
@@ -109,8 +105,6 @@ async function cachedGet(k,path,ttl=CACHE_TTL){
 ══════════════════════════════════════════ */
 function showSelector(){
   document.getElementById('sel-overlay').classList.remove('hidden');
-  const k=getApiKey();
-  if(k) document.getElementById('sel-key-input').value=k;
   const d=document.getElementById('sel-date');
   if(!d.value) d.value=new Date().toISOString().split('T')[0];
   document.getElementById('sel-fixtures').innerHTML='';
@@ -118,28 +112,18 @@ function showSelector(){
 function hideSelector(){
   document.getElementById('sel-overlay').classList.add('hidden');
 }
-function saveApiKey(){
-  const v=document.getElementById('sel-key-input').value.trim();
-  if(!v) return;
-  localStorage.setItem(LS_API_KEY,v);
-  const ok=document.getElementById('sel-key-ok');
-  ok.style.display='inline';
-  setTimeout(()=>ok.style.display='none',2000);
-}
-
 async function doFetchFixtures(){
   const comp=document.getElementById('sel-comp').value;
   const date=document.getElementById('sel-date').value;
   const el=document.getElementById('sel-fixtures');
   if(!date){el.innerHTML='<div class="sel-msg">Pick a date first.</div>';return;}
-  if(!getApiKey()){el.innerHTML='<div class="sel-error">Enter and save your API key first.</div>';return;}
   el.innerHTML='<div class="sel-msg"><span class="spin"></span> Loading fixtures…</div>';
   try{
     const data=await apiGet(`/competitions/${comp}/matches?dateFrom=${date}&dateTo=${date}`);
     selectorFixtures=data.matches||[];
     renderFixtureList(selectorFixtures,comp);
   }catch(e){
-    const msg=e.code==='AUTH'?'Invalid API key.':e.code==='RATE_LIMIT'?'Rate limited — wait a moment.':'Could not load fixtures.';
+    const msg=e.code==='AUTH'?'Proxy auth error — check worker config.':e.code==='RATE_LIMIT'?'Rate limited — wait a moment.':'Could not load fixtures.';
     el.innerHTML=`<div class="sel-error">${msg}</div>`;
   }
 }
