@@ -108,6 +108,41 @@ function showSelector(){
   const d=document.getElementById('sel-date');
   if(!d.value) d.value=new Date().toISOString().split('T')[0];
   document.getElementById('sel-fixtures').innerHTML='';
+  // Populate manual team datalist
+  const dl=document.getElementById('man-teams-dl');
+  if(dl&&!dl.children.length){
+    dl.innerHTML=Object.keys(TEAM_COLORS).sort().map(t=>`<option value="${t}">`).join('');
+  }
+  const md=document.getElementById('man-date');
+  if(md&&!md.value) md.value=new Date().toISOString().split('T')[0];
+}
+
+function toggleManualEntry(){
+  const el=document.getElementById('sel-manual');
+  const btn=document.querySelector('.sel-manual-link');
+  const hidden=el.style.display==='none';
+  el.style.display=hidden?'block':'none';
+  btn.textContent=hidden?'↑ Hide manual entry':'↓ Or enter teams manually';
+}
+
+function doManualSelect(){
+  const home=document.getElementById('man-home').value.trim();
+  const away=document.getElementById('man-away').value.trim();
+  const comp=document.getElementById('man-comp').value;
+  const date=document.getElementById('man-date').value;
+  if(!home||!away){alert('Please enter both team names.');return;}
+  // Build a minimal match object matching the football-data.org shape
+  const m={
+    id:'manual_'+slugify(home)+'_'+slugify(away),
+    utcDate:date?date+'T15:00:00Z':new Date().toISOString(),
+    status:'SCHEDULED',
+    venue:'',
+    homeTeam:{id:slugify(home),name:home,tla:home.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase()},
+    awayTeam:{id:slugify(away),name:away,tla:away.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase()},
+    score:{fullTime:{home:null,away:null}},
+    compCode:comp,
+  };
+  selectMatch(m,comp);
 }
 function hideSelector(){
   document.getElementById('sel-overlay').classList.add('hidden');

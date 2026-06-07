@@ -44,6 +44,41 @@
     </div>
 
     <div id="sel-fixtures"></div>
+
+    <div class="sel-manual-toggle">
+      <button class="sel-manual-link" onclick="toggleManualEntry()">↓ Or enter teams manually</button>
+    </div>
+    <div id="sel-manual" style="display:none">
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+        <div class="sel-label" style="margin-bottom:10px">Manual Match Entry</div>
+        <div class="sel-row" style="margin-bottom:8px">
+          <div style="flex:1">
+            <div class="sel-label">Home Team</div>
+            <input class="sel-select" id="man-home" list="man-teams-dl" placeholder="e.g. Wycombe Wanderers" autocomplete="off">
+          </div>
+          <div style="flex:1">
+            <div class="sel-label">Away Team</div>
+            <input class="sel-select" id="man-away" list="man-teams-dl" placeholder="e.g. Rotherham United" autocomplete="off">
+          </div>
+        </div>
+        <div class="sel-row" style="margin-bottom:8px">
+          <div style="flex:1.2">
+            <div class="sel-label">Competition</div>
+            <select class="sel-select" id="man-comp">
+              <option value="ELC">Championship</option>
+              <option value="EL1" selected>League One</option>
+              <option value="EL2">League Two</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div class="sel-label">Date</div>
+            <input class="sel-date" id="man-date" type="date">
+          </div>
+          <button class="sel-go" onclick="doManualSelect()">Load</button>
+        </div>
+        <datalist id="man-teams-dl"></datalist>
+      </div>
+    </div>
   </div>
 </div>
 

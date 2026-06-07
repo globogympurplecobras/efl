@@ -241,6 +241,9 @@ table tr:last-child td{border-bottom:none;}
 .sel-fixture-meta{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;margin-top:1px;}
 .sel-fixture-time{font-size:12px;font-weight:600;font-family:'DM Mono',monospace;text-align:right;}
 .sel-msg{padding:12px 0;color:var(--muted);font-size:12px;font-style:italic;}
+.sel-manual-toggle{margin-top:14px;text-align:center;}
+.sel-manual-link{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;padding:0;}
+.sel-manual-link:hover{color:var(--text);}
 .sel-error{padding:8px 12px;background:#FEE2E2;color:var(--bad);font-size:12px;margin-top:8px;}
 .sel-status-ok{font-size:11px;color:var(--good);font-weight:600;margin-left:4px;}
 
