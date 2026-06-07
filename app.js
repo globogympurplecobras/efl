@@ -1278,17 +1278,6 @@ function switchTab(id,btn){
    INIT
 ══════════════════════════════════════════ */
 (function init(){
-  // Pre-fill API key
-  const key=getApiKey();
-  if(key) document.getElementById('sel-key-input').value=key;
-
-  // Pre-populate API key from hardcoded bootstrap (first run only)
-  const BOOTSTRAP_KEY='65c5eaa24ff446afa6fd6f8f0cbda94e';
-  if(!key && BOOTSTRAP_KEY){
-    localStorage.setItem(LS_API_KEY,BOOTSTRAP_KEY);
-    document.getElementById('sel-key-input').value=BOOTSTRAP_KEY;
-  }
-
   // Restore saved match
   const saved=localStorage.getItem(LS_MATCH);
   if(saved){
