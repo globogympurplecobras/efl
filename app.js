@@ -2,7 +2,7 @@
    CONSTANTS & STATE
 ══════════════════════════════════════════ */
 // dawn-rain-2785.hollandtideserver.workers.dev:
-const PROXY_BASE = 'https://efl-proxy.YOUR-SUBDOMAIN.workers.dev/v4';
+const PROXY_BASE = 'https://dawn-rain-2785.hollandtideserver.workers.dev/v4';
 const LS_MATCH   = 'currentMatch';
 const CACHE_TTL  = 60 * 60 * 1000; // 1 hour
 const LINEUP_TTL = 15 * 60 * 1000; // 15 min
