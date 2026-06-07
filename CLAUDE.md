@@ -46,8 +46,6 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 
 ## What's Not Built Yet
 
-- Team/match selector (currently locked to demo fixture)
-- Live data pipeline — see **Data Pipeline** section below
 - Real kit/player/manager images (placeholders in place, slots are image-ready)
 - Referee data and card tendency stats
 - Suspension tracker (yellow card accumulations)
@@ -57,9 +55,53 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 
 ---
 
+## Roadmap — L1/L2 Full Functionality
+
+### Step 1 — Unblock fixtures and core match data (1 action, immediate)
+**Upgrade football-data.org to Tier 2 (€49/year)**
+- Unlocks League One and League Two alongside Championship
+- Fixtures, tables, squad lists, lineups, H2H all start working immediately
+- No code changes required — everything is already wired up in app.js/worker.js
+
+### Step 2 — Kit images (build-time scraper) ✅ Built
+- **Script:** `scraper-kits.js` — run with `node scraper-kits.js`
+- **Output:** `data/kits.json` — fetched by `app.js` at startup, used in `renderKits()`
+- Single team test: `node scraper-kits.js --team wycombe-wanderers`
+- Season override: `node scraper-kits.js --season 2026-27`
+- Falls back to colour blocks if no image found for a team
+- Requires Node 18+, no external dependencies
+
+### Step 3 — Injuries (build-time scraper) ✅ Built
+- **Script:** `scraper-injuries.js` — run with `node scraper-injuries.js`
+- **Output:** `data/injuries.json` — fetched by `app.js` at startup, displayed in the Injuries section above the manual textarea
+- Single team: `node scraper-injuries.js --team "Wycombe Wanderers"`
+- Single league: `node scraper-injuries.js --league EL1`
+- Step 1 discovers team URLs from league match links (Soccerway uses opaque hashes, not stable numeric IDs)
+- Step 2 fetches each team's squad page and parses inline injury status text
+- Injury statuses colour-coded: red = injury, amber = inactive, purple = suspended
+- Requires Node 18+, no external dependencies
+
+### Step 4 — Player and manager headshots (build-time scraper)
+- Identify each club's website platform (check `meta-generator` tag)
+- Clubcast clubs (~40–50%): plain HTTP fetch + parse `cdn.{club-domain}/...` image URLs
+- Gamechanger clubs (~50–60%): Playwright/Puppeteer, wait for squad list, parse DOM
+- Images served from `images.gc.eflservices.co.uk` for all Gamechanger clubs
+- See **Player Images** section below for full detail
+
+### Step 5 — Deeper stats (future)
+- Home/away form splits, goals by time period, set piece stats
+- No confirmed source yet — FBref and Transfermarkt both blocked; needs further research
+
+### Not yet scoped
+- Referee data / card tendency stats
+- Suspension tracker (yellow card accumulations)
+- Multi-device sync
+
+---
+
 ## Data Pipeline (Real Build)
 
-All live data via **football-data.org** API (free tier covers EFL). API key injected at build time — never hardcoded in source.
+All live data via **football-data.org** API. **Free tier covers Championship only — upgrade to Tier 2 (€49/yr) for L1/L2.** API key injected at build time — never hardcoded in source.
 
 **Match selection flow:**
 1. User selects competition (Championship / League One / League Two) and date
@@ -119,6 +161,62 @@ EFL.com itself also runs on Gamechanger (`meta-generator: Gamechanger 1.27.2`).
 2. Clubcast clubs → plain HTTP fetch + HTML parse
 3. Gamechanger clubs → Playwright, wait for squad list to render, then parse DOM
 4. Fall back to player initials placeholder if image fetch fails
+
+---
+
+## Kit Images — Football Kit Archive
+
+**Status: Confirmed scrapable (server-rendered, plain HTTP fetch works)**
+
+**Team page URL pattern:**
+```
+https://www.footballkitarchive.com/{team-slug}-kits/
+```
+e.g. `wycombe-wanderers`, `rotherham-united` — standard hyphenated slugs. Redirects to a season-filtered URL like `/{team-slug}-kits-t{id}`.
+
+**What the team page gives you:** links to all kit pages for that team, including current season home/away/third/GK. Kit page links follow: `/{team}-{season}-{type}-kit-{id}/`
+
+**Individual kit page URL pattern:**
+```
+https://www.footballkitarchive.com/{team-slug}-{season}-{type}-kit-{id}/
+```
+e.g. `/wycombe-wanderers-2025-26-home-kit-385535/`
+
+**Image URL pattern (from kit page):**
+```
+https://www.footballkitarchive.com/cdn/{YYYY}/{MM}/{DD}/{hash}/{team-slug}-{season}-{type}-kit.jpg
+```
+Image URLs are embedded in the page HTML as plain `<a href="...">` links — parse with BeautifulSoup. The first 3 images are free; additional images require a Plus subscription, but 3 is enough for kit display.
+
+**Build strategy:**
+1. Fetch `/{team-slug}-kits/` → parse links to find current-season home and away kit pages
+2. Fetch each kit page → extract the first image URL from the `/cdn/...` pattern
+3. Store URL for use in the app's kit colour blocks
+
+---
+
+## Injuries & Player/Manager Headshots — Data Sources
+
+**Transfermarkt:** Returns empty body on plain HTTP fetch — almost certainly JS-rendered or actively blocks scrapers. Not feasible without a paid API wrapper or Playwright. **Do not rely on as a scraping source.**
+
+**Alternatives — fetchability confirmed:**
+- **FBref.com** — returns empty body on plain HTTP fetch. Blocked, same as Transfermarkt. Not viable.
+- **Soccerway** — ✅ server-rendered, fetchable. Squad page includes injury status inline (e.g. "Muscle Injury", "Inactive") alongside player name, age, appearances. **Catch:** URL structure uses opaque internal slugs — the old numeric team ID URLs redirect incorrectly. Need to discover correct team URLs by scraping the England/League One index page (`soccerway.com/england/league-one/`) rather than hardcoding IDs. Once correct URL is known, injury data is straightforward to parse from the squad table.
+- **Official club websites** — injury news sometimes in news/press sections; inconsistent format across clubs
+- **BBC Sport / Sky Sports** — injury data available but structured scraping is difficult
+
+**Player/manager headshots:** Transfermarkt was the original plan but is blocked. Clubcast and Gamechanger scrapers (see Player Images section above) remain the confirmed approach for squad headshots.
+
+---
+
+## API Coverage — football-data.org
+
+**Free tier covers:** Championship (ELC, id 26) — fixtures, tables, squad, lineups  
+**Free tier does NOT cover:** League One (EL1) or League Two (EL2)
+
+**Recommended fix:** Upgrade to Tier 2 (€49/year) — unlocks all three EFL divisions, no code changes required beyond key upgrade.
+
+**API-Football (api-sports.io):** Integrated as fallback (league IDs: Championship=40, EL1=41, EL2=42). Free tier is too restricted for match prep use — date window limited to ±3 days, season restricted to 2022–2024. Wired up in app.js and worker.js but not practically usable on free tier.
 
 ---
 

@@ -75,6 +75,8 @@ let APP = {
   table: null, h2h: null,
   homeForm: null, awayForm: null,
   matchDetail: null,
+  kits: {},     // populated from data/kits.json at startup
+  injuries: {}, // populated from data/injuries.json at startup
 };
 
 let selectorFixtures = [];
@@ -509,17 +511,30 @@ function renderManagers(){
 function renderKits(){
   const hName=APP.match.homeTeam.name, aName=APP.match.awayTeam.name;
   const hc=teamColor(hName), ac=teamColor(aName);
-  function kitCard(color,name){
-    const crest=APP.homeTeam?.crest||'';
+
+  function kitSlot(imgUrl, fallbackStyle, label){
+    if(imgUrl){
+      return `<div class="kit-item">
+        <div class="kit-shape kit-shape--img"><img src="${imgUrl}" alt="${label} kit" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+        <div class="kit-label">${label}</div>
+      </div>`;
+    }
+    return `<div class="kit-item"><div class="kit-shape" style="${fallbackStyle}">${label}</div><div class="kit-label">${label}</div></div>`;
+  }
+
+  function kitCard(color, name){
+    const teamKits = APP.kits[name] || {};
+    const hasAnyImage = teamKits.home || teamKits.away || teamKits.third;
     return `<div class="card">
       <div class="kit-grid">
-        <div class="kit-item"><div class="kit-shape" style="background:${color}">HOME</div><div class="kit-label">Home</div></div>
-        <div class="kit-item"><div class="kit-shape" style="background:#FFF;border:2px solid var(--border);color:${color}">AWAY</div><div class="kit-label">Away</div></div>
-        <div class="kit-item"><div class="kit-shape" style="background:#FFD700;color:#333">3RD</div><div class="kit-label">Third</div></div>
+        ${kitSlot(teamKits.home, `background:${color}`, 'Home')}
+        ${kitSlot(teamKits.away, `background:#FFF;border:2px solid var(--border);color:${color}`, 'Away')}
+        ${kitSlot(teamKits.third, `background:#FFD700;color:#333`, 'Third')}
       </div>
-      <p class="footnote">Kit images: replace .kit-shape with &lt;img&gt; per club</p>
+      ${hasAnyImage ? '' : '<p class="footnote">Run scraper-kits.js to fetch kit images</p>'}
     </div>`;
   }
+
   document.getElementById('s-kits').innerHTML=kitCard(hc,hName)+kitCard(ac,aName);
 }
 
@@ -699,12 +714,37 @@ function renderInjuries(){
     injCard(hName,'home',mId,hVal)+injCard(aName,'away',mId,aVal);
 }
 function injCard(teamName,side,mId,val){
+  const scraped=APP.injuries[teamName];
+  const scrapedHtml=scraped&&scraped.players&&scraped.players.length
+    ? `<div class="inj-scraped">
+        ${scraped.players.map(p=>`
+          <div class="inj-row">
+            <span class="inj-name">${escHtml(p.name)}</span>
+            <span class="inj-status inj-status--${statusClass(p.status)}">${escHtml(p.status)}</span>
+          </div>`).join('')}
+        <div class="inj-meta">Source: Soccerway · ${fmtScrapedDate(scraped.scraped)}</div>
+      </div>`
+    : (scraped
+        ? `<div class="inj-meta" style="margin-bottom:8px">No injuries reported (Soccerway · ${fmtScrapedDate(scraped.scraped)})</div>`
+        : '');
   return `<div class="card">
     <div class="section-title">${teamName}</div>
-    <textarea class="notes-ta" id="inj-${side}" style="min-height:60px"
-      placeholder="e.g. Player Name — Hamstring — Out&#10;Player Name — Knock — Doubt"
+    ${scrapedHtml}
+    <textarea class="notes-ta" id="inj-${side}" style="min-height:50px;margin-top:${scrapedHtml?'10px':'0'}"
+      placeholder="Manual notes: e.g. Player — Hamstring — Out"
       onchange="localStorage.setItem('inj_${side}_${mId}',this.value)">${escHtml(val)}</textarea>
   </div>`;
+}
+function statusClass(s){
+  if(/injur/i.test(s)) return 'injury';
+  if(/inactive/i.test(s)) return 'inactive';
+  if(/suspend/i.test(s)) return 'suspended';
+  return 'other';
+}
+function fmtScrapedDate(iso){
+  if(!iso) return 'unknown date';
+  try{ return new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+  catch{ return iso; }
 }
 
 /* ══════════════════════════════════════════
@@ -1469,6 +1509,18 @@ function switchTab(id,btn){
    INIT
 ══════════════════════════════════════════ */
 (function init(){
+  // Load kit images from data/kits.json (best-effort — fails silently if not present)
+  fetch('data/kits.json')
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(data=>{ APP.kits=data||{}; })
+    .catch(()=>{}); // no kits.json yet — colour fallbacks used
+
+  // Load injury data from data/injuries.json (best-effort)
+  fetch('data/injuries.json')
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(data=>{ APP.injuries=data||{}; })
+    .catch(()=>{});
+
   // Restore saved match
   const saved=localStorage.getItem(LS_MATCH);
   if(saved){

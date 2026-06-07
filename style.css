@@ -116,7 +116,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .kit-grid{display:flex;gap:12px;flex-wrap:wrap;}
 .kit-item{display:flex;flex-direction:column;align-items:center;gap:5px;}
 .kit-shape{width:80px;height:92px;clip-path:polygon(15% 0%,85% 0%,100% 15%,100% 100%,0% 100%,0% 15%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.kit-shape--img{background:transparent!important;text-shadow:none;overflow:hidden;}
 .kit-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+
+.inj-scraped{margin-bottom:4px;}
+.inj-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);gap:8px;}
+.inj-row:last-of-type{border-bottom:none;}
+.inj-name{font-size:13px;font-weight:500;}
+.inj-status{font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.inj-status--injury{background:#FEE2E2;color:#B91C1C;}
+.inj-status--inactive{background:#FEF3C7;color:#92400E;}
+.inj-status--suspended{background:#EDE9FE;color:#5B21B6;}
+.inj-status--other{background:var(--subtle);color:var(--muted);}
+.inj-meta{font-size:10px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace;}
 
 .table-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
