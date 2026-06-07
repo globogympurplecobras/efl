@@ -22,7 +22,32 @@ export default {
 
     const url = new URL(request.url);
 
-    // Require path to start with /v4/ for safety
+    // ── Route: /af/* → api-football (API-Sports) ──
+    if (url.pathname.startsWith('/af/')) {
+      const afPath = url.pathname.slice(3); // strip /af → e.g. /fixtures
+      const target = 'https://v3.football.api-sports.io' + afPath + url.search;
+      let upstream;
+      try {
+        upstream = await fetch(target, {
+          headers: {
+            'x-apisports-key': env.AF_KEY,
+            'Accept': 'application/json',
+          },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'AF upstream fetch failed', detail: String(err) }), {
+          status: 502,
+          headers: corsHeaders('application/json'),
+        });
+      }
+      const body = await upstream.text();
+      return new Response(body, {
+        status: upstream.status,
+        headers: corsHeaders('application/json'),
+      });
+    }
+
+    // ── Route: /v4/* → football-data.org ──
     if (!url.pathname.startsWith('/v4/')) {
       return new Response('Not found', { status: 404 });
     }

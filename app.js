@@ -13,6 +13,16 @@ const COMP_NAMES = {
   EL2: 'Sky Bet League Two'
 };
 
+// API-Football (api-sports) league IDs for EFL
+// Championship also available (id 40) but covered by football-data.org free tier
+const AF_COMP_IDS = { ELC: 40, EL1: 41, EL2: 42 };
+// Use API-Football for League One + Two; Championship stays on football-data.org
+function useAfApi(comp){ return comp==='EL1'||comp==='EL2'; }
+function afSeason(){
+  const now=new Date();
+  return now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;
+}
+
 const TEAM_COLORS = {
   'Wycombe Wanderers':'#003087','Rotherham United':'#CC0000','Lincoln City':'#EE3524',
   'Bolton Wanderers':'#1B2E66','Stockport County':'#002F6C','Bradford City':'#C8102E',
@@ -100,6 +110,106 @@ async function cachedGet(k,path,ttl=CACHE_TTL){
   return data;
 }
 
+/* ── API-Football helpers ── */
+async function afApiGet(path){
+  const r=await fetch(PROXY_BASE.replace('/v4','')+'/af'+path);
+  if(r.status===429) throw Object.assign(new Error('Rate limited'),{code:'RATE_LIMIT'});
+  if(r.status===403||r.status===401) throw Object.assign(new Error('Auth error'),{code:'AUTH'});
+  if(!r.ok) throw Object.assign(new Error('API error '+r.status),{code:'ERR'});
+  const json=await r.json();
+  // AF returns errors array instead of HTTP error codes sometimes
+  if(json.errors&&Object.keys(json.errors).length&&!json.response?.length)
+    throw Object.assign(new Error('AF API error: '+JSON.stringify(json.errors)),{code:'ERR'});
+  return json;
+}
+async function afCachedGet(k,path,ttl=CACHE_TTL){
+  const hit=cacheGet(k,ttl);
+  if(hit) return hit;
+  const data=await afApiGet(path);
+  cachePut(k,data);
+  return data;
+}
+
+/* ── API-Football → internal shape adapters ── */
+function afStatusMap(s){
+  return{FT:'FINISHED',NS:'SCHEDULED',TBD:'SCHEDULED',PST:'POSTPONED',
+         HT:'IN_PLAY','1H':'IN_PLAY','2H':'IN_PLAY',ET:'IN_PLAY',P:'IN_PLAY'}[s]||s;
+}
+function afPosMap(p){
+  return{Goalkeeper:'Goalkeeper',Defender:'Defence',Midfielder:'Midfield',Attacker:'Offence'}[p]||p||'';
+}
+function afFixturesToMatches(response,comp){
+  return response.map(f=>({
+    id:f.fixture.id,
+    utcDate:f.fixture.date,
+    status:afStatusMap(f.fixture.status.short),
+    venue:f.fixture.venue?.name||'',
+    homeTeam:{id:f.teams.home.id,name:f.teams.home.name,
+      tla:f.teams.home.name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase()},
+    awayTeam:{id:f.teams.away.id,name:f.teams.away.name,
+      tla:f.teams.away.name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase()},
+    score:{fullTime:{home:f.goals.home,away:f.goals.away}},
+    goals:[],
+    compCode:comp,
+  }));
+}
+function afTeamToInternal(teamResp,squadResp,coachResp){
+  if(!teamResp) return null;
+  const t=teamResp.team||{};
+  const squad=(squadResp?.players||[]).map(p=>({
+    id:p.id,name:p.name,position:afPosMap(p.position),shirtNumber:p.number,
+  }));
+  // Current coach = career entry with no end date at current club
+  const currentCoach=coachResp?.find(c=>c.career?.some(e=>e.team?.id===t.id&&!e.end));
+  const coach=currentCoach?{
+    name:currentCoach.name,
+    contract:{start:currentCoach.career?.find(e=>e.team?.id===t.id)?.start||''},
+  }:null;
+  return{id:t.id,name:t.name,crest:t.logo,venue:teamResp.venue?.name||'',squad,coach};
+}
+function afStandingsToInternal(response){
+  const rows=(response?.[0]?.league?.standings?.[0]||[]).map(r=>({
+    position:r.rank,
+    team:{id:r.team.id,name:r.team.name},
+    playedGames:r.all.played,won:r.all.win,draw:r.all.draw,lost:r.all.lose,
+    goalsFor:r.all.goals.for,goalsAgainst:r.all.goals.against,
+    goalDifference:r.goalsDiff,points:r.points,
+  }));
+  return{standings:[{type:'TOTAL',table:rows}]};
+}
+function afFixturesToFormShape(response){
+  return{matches:response.map(f=>({
+    id:f.fixture.id,
+    utcDate:f.fixture.date,
+    status:'FINISHED',
+    venue:f.fixture.venue?.name||'',
+    homeTeam:{id:f.teams.home.id,name:f.teams.home.name},
+    awayTeam:{id:f.teams.away.id,name:f.teams.away.name},
+    score:{fullTime:{home:f.goals.home,away:f.goals.away}},
+    goals:[], // goalscorer detail not included in bulk fixtures endpoint
+  }))};
+}
+function afH2HToInternal(response,homeId,awayId){
+  const finished=response.filter(f=>f.fixture.status.short==='FT');
+  let hWins=0,aWins=0;
+  finished.forEach(f=>{
+    const gh=f.goals.home,ga=f.goals.away;
+    if(gh>ga){if(f.teams.home.id===homeId)hWins++;else aWins++;}
+    else if(ga>gh){if(f.teams.away.id===homeId)hWins++;else aWins++;}
+  });
+  const matches=response.map(f=>({
+    id:f.fixture.id,utcDate:f.fixture.date,
+    status:afStatusMap(f.fixture.status.short),
+    venue:f.fixture.venue?.name||'',
+    homeTeam:{id:f.teams.home.id,name:f.teams.home.name},
+    awayTeam:{id:f.teams.away.id,name:f.teams.away.name},
+    score:{fullTime:{home:f.goals.home,away:f.goals.away}},
+    goals:[],
+  }));
+  return{matches,aggregates:{numberOfMatches:finished.length,
+    homeTeam:{wins:hWins},awayTeam:{wins:aWins}}};
+}
+
 /* ══════════════════════════════════════════
    MATCH SELECTOR
 ══════════════════════════════════════════ */
@@ -154,9 +264,17 @@ async function doFetchFixtures(){
   if(!date){el.innerHTML='<div class="sel-msg">Pick a date first.</div>';return;}
   el.innerHTML='<div class="sel-msg"><span class="spin"></span> Loading fixtures…</div>';
   try{
-    const data=await apiGet(`/competitions/${comp}/matches?dateFrom=${date}&dateTo=${date}`);
-    selectorFixtures=data.matches||[];
-    renderFixtureList(selectorFixtures,comp);
+    let matches;
+    if(useAfApi(comp)){
+      const leagueId=AF_COMP_IDS[comp];
+      const data=await afApiGet(`/fixtures?league=${leagueId}&date=${date}`);
+      matches=afFixturesToMatches(data.response||[],comp);
+    }else{
+      const data=await apiGet(`/competitions/${comp}/matches?dateFrom=${date}&dateTo=${date}`);
+      matches=data.matches||[];
+    }
+    selectorFixtures=matches;
+    renderFixtureList(matches,comp);
   }catch(e){
     const msg=e.code==='AUTH'?'Proxy auth error — check worker config.':e.code==='RATE_LIMIT'?'Rate limited — wait a moment.':'Could not load fixtures.';
     el.innerHTML=`<div class="sel-error">${msg}</div>`;
@@ -230,6 +348,8 @@ function hexToLight(hex){
    DATA LOADING
 ══════════════════════════════════════════ */
 async function loadMatchData(m,comp){
+  if(useAfApi(comp)) return loadMatchDataAF(m,comp);
+
   const hId=m.homeTeam.id, aId=m.awayTeam.id, mId=m.id;
   const seasonStart=`${new Date().getMonth()>=7?new Date().getFullYear():new Date().getFullYear()-1}-08-01`;
   const today=new Date().toISOString().split('T')[0];
@@ -251,6 +371,42 @@ async function loadMatchData(m,comp){
   APP.homeForm    = results[4].status==='fulfilled'?results[4].value:null;
   APP.awayForm    = results[5].status==='fulfilled'?results[5].value:null;
   APP.matchDetail = results[6].status==='fulfilled'?results[6].value:null;
+
+  renderAll();
+}
+
+async function loadMatchDataAF(m,comp){
+  const hId=m.homeTeam.id, aId=m.awayTeam.id, mId=m.id;
+  const season=afSeason();
+  const leagueId=AF_COMP_IDS[comp];
+
+  const results=await Promise.allSettled([
+    afCachedGet(`af_team_${hId}`,`/teams?id=${hId}`),
+    afCachedGet(`af_squad_${hId}`,`/players/squads?team=${hId}`),
+    afCachedGet(`af_coach_${hId}`,`/coachs?team=${hId}`),
+    afCachedGet(`af_team_${aId}`,`/teams?id=${aId}`),
+    afCachedGet(`af_squad_${aId}`,`/players/squads?team=${aId}`),
+    afCachedGet(`af_coach_${aId}`,`/coachs?team=${aId}`),
+    afCachedGet(`af_table_${leagueId}_${season}`,`/standings?league=${leagueId}&season=${season}`),
+    afCachedGet(`af_h2h_${hId}_${aId}`,`/fixtures/headtohead?h2h=${hId}-${aId}&last=10`),
+    afCachedGet(`af_form_${hId}_${season}`,`/fixtures?team=${hId}&last=5&status=FT`),
+    afCachedGet(`af_form_${aId}_${season}`,`/fixtures?team=${aId}&last=5&status=FT`),
+  ]);
+
+  const get=(r,key='response')=>r.status==='fulfilled'?(r.value?.[key]??r.value):null;
+
+  const hTeamR=get(results[0]),  hSquadR=get(results[1]), hCoachR=get(results[2]);
+  const aTeamR=get(results[3]),  aSquadR=get(results[4]), aCoachR=get(results[5]);
+  const tableR=get(results[6]),  h2hR=get(results[7]);
+  const hFormR=get(results[8]),  aFormR=get(results[9]);
+
+  APP.homeTeam    = afTeamToInternal(hTeamR?.[0], hSquadR?.[0], hCoachR);
+  APP.awayTeam    = afTeamToInternal(aTeamR?.[0], aSquadR?.[0], aCoachR);
+  APP.table       = tableR ? afStandingsToInternal(tableR) : null;
+  APP.h2h         = h2hR  ? afH2HToInternal(h2hR, hId, aId) : null;
+  APP.homeForm    = hFormR ? afFixturesToFormShape(hFormR) : null;
+  APP.awayForm    = aFormR ? afFixturesToFormShape(aFormR) : null;
+  APP.matchDetail = null; // lineup import not yet supported for AF matches
 
   renderAll();
 }
