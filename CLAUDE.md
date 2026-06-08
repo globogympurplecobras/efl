@@ -60,6 +60,14 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 
 ---
 
+## Development Status
+
+**⏸ Development on ice (June 2026).** All development paused pending a decision on **football-data.org Tier 2 (€49/month)**. The current free-tier pipeline (TheSportsDB + Soccerway) is too patchy to build further on — missing manager data, truncated squads/standings/form, no automated refresh, kit images blocked. Nothing else should be built until the data foundation is confirmed.
+
+**When unblocked:** the football-data.org integration is already wired into `app.js` and `worker.js` — upgrading is a key swap, not a rebuild. Resume order: (1) confirm pricing, (2) upgrade data pipeline, (3) GitHub Actions automation, (4) player image scraper (Step 4) — that depends on full squad data so must come after the pipeline is solid.
+
+---
+
 ## Roadmap
 
 ### Step 1 — Build-time data pipeline ✅ Built

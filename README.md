@@ -39,6 +39,19 @@ Select a Championship, League One, League Two, or World Cup fixture by date. The
 
 ---
 
+## Development status
+
+**⏸ Paused (June 2026).** The app is functional with demo data (Wycombe vs Rotherham, May 2026) but the data pipeline is built on patchwork free-tier sources with significant gaps. Development is paused pending a decision on **football-data.org Tier 2 (€49/month)**, which would cover all three EFL divisions properly and simplify the pipeline considerably. The integration is already wired in — upgrading is a key swap, not a rebuild.
+
+Known gaps with current free-tier sources:
+- Manager names not available (TheSportsDB free tier)
+- Form limited to ~1 recent match per team rather than 5
+- League table returns 5 rows only
+- Squad limited to 10 players per team
+- Kit images blocked (Football Kit Archive returns 403 on automated requests)
+
+---
+
 ## Data pipeline
 
 Data is built ahead of the match using the TheSportsDB scraper (free, no API key required). Run it the morning before the game.
