@@ -57,30 +57,36 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 
 ---
 
-## Roadmap — L1/L2 Full Functionality
+## Roadmap
 
-### Step 1 — Unblock fixtures and core match data (1 action, immediate)
-**Upgrade football-data.org to Tier 2 (€49/year)**
-- Unlocks League One and League Two alongside Championship
-- Fixtures, tables, squad lists, lineups, H2H all start working immediately
-- No code changes required — everything is already wired up in app.js/worker.js
+### Step 1 — Build-time data pipeline ✅ Built
+**Script:** `scraper-data.js` — replaces live API calls with pre-built static JSON files.
+Run the night before or morning of a match. Data is slow-changing (squads, form, H2H, standings change at most daily).
+
+```
+node scraper-data.js --comp WC --date 2026-06-15   # list fixtures on a date
+node scraper-data.js --match 521234                 # fetch full data for one match
+```
+
+- **Output files:** `data/teams.json`, `data/tables.json`, `data/h2h.json`, `data/form.json`, `data/matches.json`
+- `app.js` tries static files first; falls back to live API for anything not yet scraped
+- Files are cumulative — re-running adds/updates entries without overwriting others
+- Requires `FOOTBALL_DATA_KEY` in a `.env` file (never commit the key)
+- Free tier covers WC + Championship; L1/L2 requires Tier 2 (€49/month — awaiting bespoke pricing from creator)
 
 ### Step 2 — Kit images (build-time scraper) ✅ Built
-- **Script:** `scraper-kits.js` — run with `node scraper-kits.js`
+- **Script:** `scraper-kits.js` (EFL clubs) / `scraper-kits-wc.js` (WC nations)
 - **Output:** `data/kits.json` — fetched by `app.js` at startup, used in `renderKits()`
-- Single team test: `node scraper-kits.js --team wycombe-wanderers`
-- Season override: `node scraper-kits.js --season 2026-27`
-- Falls back to colour blocks if no image found for a team
+- Falls back to colour blocks if no image found
+- Football Kit Archive returns 403 on automated requests — needs a workaround (see Step 6)
 - Requires Node 18+, no external dependencies
 
 ### Step 3 — Injuries (build-time scraper) ✅ Built
 - **Script:** `scraper-injuries.js` — run with `node scraper-injuries.js`
-- **Output:** `data/injuries.json` — fetched by `app.js` at startup, displayed in the Injuries section above the manual textarea
+- **Output:** `data/injuries.json` — fetched by `app.js` at startup
 - Single team: `node scraper-injuries.js --team "Wycombe Wanderers"`
 - Single league: `node scraper-injuries.js --league EL1`
-- Step 1 discovers team URLs from league match links (Soccerway uses opaque hashes, not stable numeric IDs)
-- Step 2 fetches each team's squad page and parses inline injury status text
-- Injury statuses colour-coded: red = injury, amber = inactive, purple = suspended
+- Soccerway source: server-rendered, fetchable. Team URLs discovered from league index (opaque hashes, not stable IDs)
 - Requires Node 18+, no external dependencies
 
 ### Step 4 — Player and manager headshots (build-time scraper)
@@ -88,9 +94,29 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 - Clubcast clubs (~40–50%): plain HTTP fetch + parse `cdn.{club-domain}/...` image URLs
 - Gamechanger clubs (~50–60%): Playwright/Puppeteer, wait for squad list, parse DOM
 - Images served from `images.gc.eflservices.co.uk` for all Gamechanger clubs
+- For WC nations: Wikidata has reasonable manager coverage via its open API — worth investigating
 - See **Player Images** section below for full detail
 
-### Step 5 — Deeper stats (future)
+### Step 5 — Local image + data store (manual fallback)
+Where automated scraping fails or isn't worth building, a local store allows manual upload with permanent recall.
+
+**Concept:**
+- Each team gets a folder: `team-data/{team-slug}/` containing `meta.json` + image files
+- `meta.json` holds overrides: kit image paths, manager headshot path, team colours, any manually entered data
+- App checks `team-data/{slug}/` before falling back to scraped data or colour blocks
+- UI: an "Edit Team" panel in the app where you can upload a kit image or headshot, which saves to the team folder and updates `meta.json`
+- Once entered, data persists forever and is recalled whenever that team appears — season-stable for kits, update manager/headshot only when it changes
+- **Backend required:** file writes need a simple local Node server (e.g. `server.js` with Express) or a GitHub Action that commits uploaded files. Not needed for read-only deployment on GitHub Pages.
+
+**Priority:** build after Steps 1–4 are complete. Most valuable for teams where automated scraping consistently fails.
+
+### Step 6 — Kit image source
+Football Kit Archive blocks automated requests (403). Options under investigation:
+- Direct CDN URL harvesting via browser (manual one-time copy per team per season)
+- Alternative source: Footy Headlines or official club/federation shops (less consistent)
+- Manual upload via Step 5 store as the reliable fallback
+
+### Step 7 — Deeper stats (future)
 - Home/away form splits, goals by time period, set piece stats
 - No confirmed source yet — FBref and Transfermarkt both blocked; needs further research
 
@@ -98,12 +124,13 @@ Single-file web app for preparing broadcast coverage of EFL football matches. Bu
 - Referee data / card tendency stats
 - Suspension tracker (yellow card accumulations)
 - Multi-device sync
+- L1/L2 API access (pending response from football-data.org on bespoke pricing)
 
 ---
 
 ## Data Pipeline (Real Build)
 
-All live data via **football-data.org** API. **Free tier covers Championship only — upgrade to Tier 2 (€49/yr) for L1/L2.** API key injected at build time — never hardcoded in source.
+All live data via **football-data.org** API. **Free tier covers Championship only — upgrade to Tier 2 (€49/month) for L1/L2.** API key injected at build time — never hardcoded in source.
 
 **Match selection flow:**
 1. User selects competition (Championship / League One / League Two) and date
@@ -218,7 +245,7 @@ Image URLs are embedded in the page HTML as plain `<a href="...">` links — par
 **Free tier covers:** Championship (ELC, id 26) — fixtures, tables, squad, lineups  
 **Free tier does NOT cover:** League One (EL1) or League Two (EL2)
 
-**Recommended fix:** Upgrade to Tier 2 (€49/year) — unlocks all three EFL divisions, no code changes required beyond key upgrade.
+**Recommended fix:** Upgrade to Tier 2 (€49/month) — unlocks all three EFL divisions, no code changes required beyond key upgrade.
 
 **API-Football (api-sports.io):** Integrated as fallback (league IDs: Championship=40, EL1=41, EL2=42). Free tier is too restricted for match prep use — date window limited to ±3 days, season restricted to 2022–2024. Wired up in app.js and worker.js but not practically usable on free tier.
 

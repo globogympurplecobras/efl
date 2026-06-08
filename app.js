@@ -354,16 +354,53 @@ async function loadMatchData(m,comp){
   if(useAfApi(comp)) return loadMatchDataAF(m,comp);
 
   const hId=m.homeTeam.id, aId=m.awayTeam.id, mId=m.id;
+
+  // ── Static data path (scraper-data.js output) ────────────────────────────
+  // Try loading from pre-built JSON files first. Falls back to live API if
+  // the file is missing or the match/team isn't in it yet.
+  const [teamsFile, tablesFile, h2hFile, formFile] = await Promise.all([
+    fetch('data/teams.json').then(r=>r.ok?r.json():null).catch(()=>null),
+    fetch('data/tables.json').then(r=>r.ok?r.json():null).catch(()=>null),
+    fetch('data/h2h.json').then(r=>r.ok?r.json():null).catch(()=>null),
+    fetch('data/form.json').then(r=>r.ok?r.json():null).catch(()=>null),
+  ]);
+
+  const staticHome  = teamsFile?.[hId]  ?? null;
+  const staticAway  = teamsFile?.[aId]  ?? null;
+  const staticTable = tablesFile?.[comp] ?? null;
+  const staticH2H   = h2hFile?.[mId]    ?? null;
+  const staticHForm = formFile?.[hId]   ?? null;
+  const staticAForm = formFile?.[aId]   ?? null;
+
+  // Use static data where available; fall back to live API for anything missing
+  const needsLive = !staticHome || !staticAway || !staticTable || !staticH2H || !staticHForm || !staticAForm;
+
+  if(!needsLive){
+    APP.homeTeam    = staticHome;
+    APP.awayTeam    = staticAway;
+    APP.table       = staticTable;
+    APP.h2h         = staticH2H;
+    APP.homeForm    = staticHForm;
+    APP.awayForm    = staticAForm;
+    APP.matchDetail = null; // lineup populated on match day only
+    renderAll();
+    return;
+  }
+
+  // ── Live API fallback ────────────────────────────────────────────────────
   const seasonStart=`${new Date().getMonth()>=7?new Date().getFullYear():new Date().getFullYear()-1}-08-01`;
+  // For tournaments (WC etc) use a broader window
+  const isTournament=!['ELC','EL1','EL2','PL'].includes(comp);
+  const formFrom=isTournament?`${new Date().getFullYear()}-01-01`:seasonStart;
   const today=new Date().toISOString().split('T')[0];
 
   const results=await Promise.allSettled([
-    cachedGet(`team_${hId}`,`/teams/${hId}`),
-    cachedGet(`team_${aId}`,`/teams/${aId}`),
-    cachedGet(`table_${comp}`,`/competitions/${comp}/standings`),
-    cachedGet(`h2h_${mId}`,`/matches/${mId}/head2head?limit=10`),
-    cachedGet(`form_${hId}_${today}`,`/teams/${hId}/matches?status=FINISHED&dateFrom=${seasonStart}&dateTo=${today}`),
-    cachedGet(`form_${aId}_${today}`,`/teams/${aId}/matches?status=FINISHED&dateFrom=${seasonStart}&dateTo=${today}`),
+    staticHome  ? Promise.resolve(staticHome)  : cachedGet(`team_${hId}`,`/teams/${hId}`),
+    staticAway  ? Promise.resolve(staticAway)  : cachedGet(`team_${aId}`,`/teams/${aId}`),
+    staticTable ? Promise.resolve(staticTable) : cachedGet(`table_${comp}`,`/competitions/${comp}/standings`),
+    staticH2H   ? Promise.resolve(staticH2H)   : cachedGet(`h2h_${mId}`,`/matches/${mId}/head2head?limit=10`),
+    staticHForm ? Promise.resolve(staticHForm) : cachedGet(`form_${hId}_${today}`,`/teams/${hId}/matches?status=FINISHED&dateFrom=${formFrom}&dateTo=${today}`),
+    staticAForm ? Promise.resolve(staticAForm) : cachedGet(`form_${aId}_${today}`,`/teams/${aId}/matches?status=FINISHED&dateFrom=${formFrom}&dateTo=${today}`),
     cachedGet(`match_${mId}`,`/matches/${mId}`,LINEUP_TTL),
   ]);
 
