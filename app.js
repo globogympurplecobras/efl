@@ -10,7 +10,8 @@ const LINEUP_TTL = 15 * 60 * 1000; // 15 min
 const COMP_NAMES = {
   ELC: 'Sky Bet Championship',
   EL1: 'Sky Bet League One',
-  EL2: 'Sky Bet League Two'
+  EL2: 'Sky Bet League Two',
+  WC:  'FIFA World Cup 2026'
 };
 
 // API-Football (api-sports) league IDs for EFL
