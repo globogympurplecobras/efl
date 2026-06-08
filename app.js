@@ -52,7 +52,16 @@ const TEAM_COLORS = {
   'Walsall':'#CC0000','Peterborough United':'#0066B2','Charlton Athletic':'#CC0000',
 };
 
-function teamColor(name){ return TEAM_COLORS[name] || '#444'; }
+function teamColor(name){
+  // Prefer live colour from Sofascore static data (set after teams.json loads)
+  const id=APP.homeTeam?.name===name?APP.homeTeam?.id:APP.awayTeam?.name===name?APP.awayTeam?.id:null;
+  if(id && APP.teamColors?.[id]) return APP.teamColors[id];
+  return TEAM_COLORS[name] || '#444';
+}
+function teamCrest(side){
+  const team=side==='home'?APP.homeTeam:APP.awayTeam;
+  return team?.crest||null;
+}
 function initials(name){
   return (name||'?').split(' ').filter(w=>w).map(w=>w[0]).join('').slice(0,2).toUpperCase();
 }
@@ -76,8 +85,9 @@ let APP = {
   table: null, h2h: null,
   homeForm: null, awayForm: null,
   matchDetail: null,
-  kits: {},     // populated from data/kits.json at startup
-  injuries: {}, // populated from data/injuries.json at startup
+  kits: {},       // populated from data/kits.json at startup
+  injuries: {},   // populated from data/injuries.json at startup
+  teamColors: {}, // id → primary hex, populated from Sofascore data
 };
 
 let selectorFixtures = [];
@@ -456,6 +466,9 @@ async function loadMatchDataAF(m,comp){
 ══════════════════════════════════════════ */
 function renderAll(){
   const m=APP.match;
+  // Populate teamColors from Sofascore data so teamColor() picks up live hex values
+  if(APP.homeTeam?.colors?.primary) APP.teamColors[APP.homeTeam.id]=APP.homeTeam.colors.primary;
+  if(APP.awayTeam?.colors?.primary) APP.teamColors[APP.awayTeam.id]=APP.awayTeam.colors.primary;
   renderBanner();
   renderManagers();
   renderKits();
@@ -494,11 +507,18 @@ function renderBanner(){
   }
   const venue=m.venue||(APP.homeTeam?.venue)||'';
   const comp=COMP_NAMES[m.compCode]||'';
+  const hCrest=teamCrest('home'), aCrest=teamCrest('away');
+  const crestImg=(url,name)=>url
+    ?`<img class="team-crest" src="${url}" alt="${name}" onerror="this.style.display='none'">`
+    :'';
   document.getElementById('match-banner').innerHTML=`
     <div class="match-banner">
       <div class="team-header">
-        <div class="team-name" style="color:${hc}">${hName}</div>
-        <div class="team-meta">${venue}${hPos?' &nbsp;·&nbsp; '+hPos:''}</div>
+        ${crestImg(hCrest,hName)}
+        <div>
+          <div class="team-name" style="color:${hc}">${hName}</div>
+          <div class="team-meta">${venue}${hPos?' &nbsp;·&nbsp; '+hPos:''}</div>
+        </div>
       </div>
       <div class="match-centre">
         <span class="match-vs">VS</span>
@@ -507,8 +527,11 @@ function renderBanner(){
         <div class="match-badge">${comp}</div>
       </div>
       <div class="team-header away">
-        <div class="team-name" style="color:${ac}">${aName}</div>
-        <div class="team-meta">${aPos||''}</div>
+        <div style="text-align:right">
+          <div class="team-name" style="color:${ac}">${aName}</div>
+          <div class="team-meta">${aPos||''}</div>
+        </div>
+        ${crestImg(aCrest,aName)}
       </div>
     </div>`;
 }
