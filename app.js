@@ -277,6 +277,18 @@ async function doFetchFixtures(){
   if(!date){el.innerHTML='<div class="sel-msg">Pick a date first.</div>';return;}
   el.innerHTML='<div class="sel-msg"><span class="spin"></span> Loading fixtures…</div>';
   try{
+    // Check matches.json first — scraped data uses TheSportsDB IDs which must
+    // match teams.json / form.json / etc. Live API uses football-data.org IDs which don't.
+    const staticMatchesFile=await fetch('data/matches.json').then(r=>r.ok?r.json():null).catch(()=>null);
+    const staticMatches=staticMatchesFile
+      ? Object.values(staticMatchesFile).filter(m=>m.compCode===comp&&m.utcDate&&m.utcDate.startsWith(date))
+      : [];
+    if(staticMatches.length){
+      selectorFixtures=staticMatches;
+      renderFixtureList(staticMatches,comp);
+      return;
+    }
+    // Fall back to live API
     let matches;
     if(useAfApi(comp)){
       const leagueId=AF_COMP_IDS[comp];

@@ -138,7 +138,7 @@ function eventToMatch(ev, comp) {
   return {
     id:       String(ev.idEvent),
     utcDate:  ev.strTimestamp || `${ev.dateEvent}T${ev.strTime || '12:00:00'}Z`,
-    status:   ev.strStatus === 'Match Finished' ? 'FINISHED' : 'SCHEDULED',
+    status:   (ev.strStatus === 'Match Finished' || (hScore !== null && aScore !== null)) ? 'FINISHED' : 'SCHEDULED',
     venue:    ev.strVenue || null,
     compCode: comp,
     homeTeam: { id: String(ev.idHomeTeam), name: ev.strHomeTeam, tla: tla(ev.strHomeTeam) },

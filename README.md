@@ -41,24 +41,26 @@ Select a Championship, League One, League Two, or World Cup fixture by date. The
 
 ## Data pipeline
 
-Data is built ahead of the match using the Sofascore scraper (no API key required). Run it the morning before the game.
+Data is built ahead of the match using the TheSportsDB scraper (free, no API key required). Run it the morning before the game.
 
 ```bash
 # List fixtures on a date
-node scraper-sofascore.js --comp EL1 --date 2026-08-10
+node scraper-sportsdb.js --comp EL1 --date 2026-08-10
 
 # Fetch all data for a specific match
-node scraper-sofascore.js --match 14060002
+node scraper-sportsdb.js --match 2391728
 ```
+
+Then open the app, select the competition and date in the fixture selector, and pick the match. The selector checks `data/matches.json` first — if the match was scraped, it loads from static files with no API calls required.
 
 This writes five files to `data/` — the app loads them at startup:
 
 | File | Contents |
 |---|---|
-| `data/teams.json` | Squad, manager, crest URL, team colours per team |
+| `data/teams.json` | Squad, crest URL, team colours per team |
 | `data/tables.json` | League standings per competition |
 | `data/h2h.json` | Head-to-head aggregate + match history per fixture |
-| `data/form.json` | Last 10 finished matches per team |
+| `data/form.json` | Recent finished matches per team |
 | `data/matches.json` | Fixture index (match ID → basic match object) |
 | `data/kits.json` | Kit image URLs per team (from `scraper-kits.js`) |
 | `data/injuries.json` | Injury/availability per team (from `scraper-injuries.js`) |
@@ -72,14 +74,32 @@ This writes five files to `data/` — the app loads them at startup:
 | Sky Bet League Two | `EL2` |
 | FIFA World Cup 2026 | `WC` |
 
+### Free tier limitations (TheSportsDB key "123")
+
+- Form: ~1 recent match per team rather than 5
+- League table: 5 rows only
+- Squad: up to 10 players per team
+- Manager name: not available — shown as "—" in the app
+- H2H: best-effort (may return 0 results)
+
 ### Fallback scraper
 
-`scraper-data.js` uses the football-data.org API as a fallback. Requires `FOOTBALL_DATA_KEY` in a `.env` file. Free tier covers Championship + World Cup only; League One/Two requires Tier 2 (€49/month).
+`scraper-data.js` uses the football-data.org API. Requires `FOOTBALL_DATA_KEY` in a `.env` file. Free tier covers Championship + World Cup only; League One/Two requires Tier 2 (€49/month).
 
 ```bash
 node scraper-data.js --comp WC --date 2026-06-15
 node scraper-data.js --match 521234
 ```
+
+### Local development
+
+Serve the app locally without pushing to GitHub Pages:
+
+```bash
+python3 -m http.server 3000
+```
+
+Then open `http://localhost:3000`.
 
 ---
 
@@ -90,7 +110,8 @@ node scraper-data.js --match 521234
 | `index.html` | Markup — header, tabs, match selector, ground layout SVG |
 | `style.css` | All styles including print layout |
 | `app.js` | All JavaScript — data loading, rendering, localStorage |
-| `scraper-sofascore.js` | Primary build-time scraper (Sofascore, no key required) |
+| `scraper-sportsdb.js` | Primary build-time scraper (TheSportsDB, free key "123") |
+| `scraper-sofascore.js` | ⚠️ Deprecated — blocked by Cloudflare, do not use |
 | `scraper-data.js` | Fallback scraper (football-data.org, requires API key) |
 | `scraper-kits.js` | Kit image scraper for EFL clubs |
 | `scraper-kits-wc.js` | Kit image scraper for WC nations |
@@ -117,6 +138,7 @@ node scraper-data.js --match 521234
 
 ## Planned
 
+- Manager name (TheSportsDB free tier doesn't return coach data — shown as "—")
 - Player and manager headshots (image slots ready — scraper not yet built)
 - Kit images (Football Kit Archive blocks automated requests — manual upload fallback planned)
 - Referee data and card tendency stats

@@ -1,29 +1,37 @@
 #!/usr/bin/env node
 /**
- * scraper-injuries.js — Soccerway injury scraper
+ * scraper-injuries.js — Soccerway squad + injury scraper
  *
- * Discovers EFL team URLs from league match links, then fetches each team's
- * squad page and parses injury/availability status for each player.
+ * Discovers EFL team URLs from league match links, fetches each team's
+ * Soccerway page, and extracts coach, stadium, full squad (League One block),
+ * and injury/availability status for each player.
  *
  * Usage:
- *   node scraper-injuries.js                        # all three divisions
- *   node scraper-injuries.js --league EL1           # one division (ELC / EL1 / EL2)
+ *   node scraper-injuries.js                             # all three divisions
+ *   node scraper-injuries.js --league EL1                # one division (ELC / EL1 / EL2)
  *   node scraper-injuries.js --team "Wycombe Wanderers"  # single team
  *
- * Output: data/injuries.json
- * {
- *   "Wycombe Wanderers": {
- *     "url": "https://www.soccerway.com/team/wycombe/hl2V5JIl/",
- *     "scraped": "2026-06-07T12:00:00.000Z",
- *     "players": [
- *       { "name": "Nicolas Kocik", "status": "Muscle Injury" },
- *       { "name": "Theo Eyoum",   "status": "Inactive" }
- *     ]
- *   }
- * }
+ * Outputs:
+ *   data/injuries.json  — backward-compatible: { teamName: { url, scraped, players[] } }
+ *   data/squads.json    — full data:
+ *     {
+ *       "Wycombe Wanderers": {
+ *         "url": "https://www.soccerway.com/team/wycombe/hl2V5JIl/",
+ *         "scraped": "2026-06-08T12:00:00.000Z",
+ *         "coach": "Michael Duff",
+ *         "stadium": "Adams Park (High Wycombe)",
+ *         "capacity": 10137,
+ *         "squad": [
+ *           { "number": 50, "name": "Will Norris", "position": "GK", "age": 32,
+ *             "status": null, "apps": 34, "goals": 0, "assists": 0, "yellows": 9, "reds": 0 },
+ *           { "number": 17, "name": "Dan Casey", "position": "DEF", "age": 28,
+ *             "status": "Hamstring Injury", ... }
+ *         ]
+ *       }
+ *     }
  *
- * No external dependencies — uses Node.js built-in https module.
- * Requires Node 18+.
+ * Both files are cumulative — re-running adds/updates without wiping other teams.
+ * No external dependencies — uses Node.js built-in https module. Requires Node 18+.
  */
 
 const https = require('https');
@@ -190,40 +198,132 @@ async function discoverTeamUrls(leagueUrls) {
   return teamUrls;
 }
 
-// ── Step 2: Parse injuries from a team squad page ─────────────────────────────
-// Soccerway squad pages are server-rendered. Injury status appears as plain
-// text immediately after the player anchor, e.g.:
-//   <a href="/player/kocik-nicolas/GWNiNpl0/">Nicolas Kocik</a>Muscle Injury
+// ── Name helper ───────────────────────────────────────────────────────────────
+// Soccerway stores names as "Surname Firstname". Swap to "Firstname Surname"
+// for two-part names. For ambiguous multi-part names, store as-is with a note.
+function swapName(raw) {
+  const parts = raw.trim().split(/\s+/);
+  if (parts.length === 2) return `${parts[1]} ${parts[0]}`;
+  // 3+ parts: can't reliably split — return as-is (Soccerway order)
+  return raw.trim();
+}
+
+// ── Step 2: Parse full team data from a Soccerway squad page ─────────────────
+// Extracts: stadium, capacity, coach, squad (position/number/age/stats/status)
 //
-// Known status strings: "Muscle Injury", "Injury", "Inactive",
-//   "Knee Injury", "Hamstring Injury", "Back Injury", "Foot Injury",
-//   "Ankle Injury", "Suspended", "Illness", "Unknown Injury"
-function parseInjuries(html) {
-  const injured = [];
+// The page repeats the squad for each competition tab (League One, EFL Cup,
+// FA Cup, EFL Trophy, Total). We parse only the first block by stopping at
+// the first Coach entry, which terminates the League One section.
+//
+// Player row HTML pattern:
+//   <td>{shirt}</td><td><a href="/player/...">Surname Firstname</a>{status?}</td>
+//   <td>{age|?}</td><td>{apps}</td><td>{mins}</td><td>{g}</td><td>{a}</td>
+//   <td>{y}</td><td>{r}</td>
+//
+// Known injury status strings: "Muscle Injury", "Hamstring Injury", "Injury",
+//   "Inactive", "Knee Injury", "Ankle Injury", "Suspended", "Illness", etc.
+function parseTeamData(html) {
+  const out = {
+    stadium: null,
+    capacity: null,
+    coach: null,
+    squad: [],    // League One block only
+    injured: [],  // subset of squad with a non-null status
+  };
 
-  // Match player links followed by optional injury text
-  // We look for the player anchor then capture text up to the next tag
-  const re = /<a\s+href="\/player\/[^"]+">([^<]+)<\/a>([^<]*)/g;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const playerName = m[1].trim();
-    const rawStatus  = m[2].trim();
+  // Stadium & capacity ─────────────────────────────────────────────────────────
+  let m = html.match(/Stadium:\s*([^(<\r\n]+)/);
+  if (m) out.stadium = m[1].trim();
 
-    // Only keep entries that have a recognisable injury/availability status
-    if (!rawStatus) continue;
+  m = html.match(/Capacity:\s*([\d\s]+)/);
+  if (m) out.capacity = parseInt(m[1].replace(/\D/g, ''), 10) || null;
 
-    // Filter out noise — Soccerway sometimes has stray text after player links
-    // that isn't a status. Real statuses contain "Injury", "Inactive",
-    // "Suspended", "Illness", or similar keywords.
-    const isStatus = /injur|inactive|suspended|illness|doubt|unavailable|unknown/i.test(rawStatus)
-      || /^[A-Z][a-z]+ (Injury|Inactive|Suspended|Illness)$/.test(rawStatus);
+  // Limit to first competition block (League One) ──────────────────────────────
+  // The first "Coach" section header ends the League One squad table.
+  // We grab a little extra past it to capture the coach's player link.
+  const coachTagIdx = html.search(/>\s*Coach\s*</);
+  const squadHtml   = coachTagIdx > 0 ? html.slice(0, coachTagIdx + 800) : html;
 
-    if (isStatus) {
-      injured.push({ name: playerName, status: rawStatus });
+  // Coach ──────────────────────────────────────────────────────────────────────
+  if (coachTagIdx > 0) {
+    const snippet = html.slice(coachTagIdx, coachTagIdx + 800);
+    m = snippet.match(/href="\/player\/[^"]+">([^<]+)<\/a>/);
+    if (m) out.coach = swapName(m[1].trim());
+  }
+
+  // Squad ──────────────────────────────────────────────────────────────────────
+  // Single-pass scan: track current position group, then pick up player rows.
+  const POS = { Goalkeepers: 'GK', Defenders: 'DEF', Midfielders: 'MID', Forwards: 'FWD' };
+  let currentPos = null;
+
+  // Matches either:
+  //   (A) a position section header  — group 1
+  //   (B) a player row with shirt #  — groups 2–11
+  const scanner = new RegExp(
+    // (A) position header inside any tag
+    '(?:>\\s*(Goalkeepers|Defenders|Midfielders|Forwards)\\s*<)' +
+    '|' +
+    // (B) shirt td, then player td with link + optional status, then age td,
+    //     then optionally apps / mins / goals / assists / yellows / reds tds
+    '(?:<td[^>]*>(\\d{1,3})<\\/td>' +               // [2] shirt number
+    '\\s*<td[^>]*>' +
+    '<a\\s[^>]*href="\\/player\\/[^"]+">([^<]+)<\\/a>' + // [3] name (Surname First)
+    '([^<]*)<\\/td>' +                               // [4] status text (may be empty)
+    '\\s*<td[^>]*>(\\d+|\\?)<\\/td>' +              // [5] age
+    '(?:' +
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [6] apps
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [7] mins
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [8] goals
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [9] assists
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [10] yellows
+      '\\s*<td[^>]*>(\\d+)<\\/td>' +                // [11] reds
+    ')?)',
+    'g'
+  );
+
+  let match;
+  while ((match = scanner.exec(squadHtml)) !== null) {
+    if (match[1]) {
+      // Position section header
+      currentPos = POS[match[1]] || null;
+    } else if (match[2] && match[3] && currentPos) {
+      // Player row
+      const statusRaw = (match[4] || '').trim();
+      const isInjury  = /injur|inactive|suspended|illness|doubt|unavailable|unknown/i.test(statusRaw);
+      const status    = isInjury ? statusRaw : null;
+
+      const player = {
+        number:   parseInt(match[2], 10),
+        name:     swapName(match[3].trim()),
+        position: currentPos,
+        age:      match[5] === '?' ? null : parseInt(match[5], 10),
+        status,
+        // Stats are null if the optional stats group didn't match
+        apps:     match[6]  != null ? parseInt(match[6],  10) : null,
+        goals:    match[8]  != null ? parseInt(match[8],  10) : null,
+        assists:  match[9]  != null ? parseInt(match[9],  10) : null,
+        yellows:  match[10] != null ? parseInt(match[10], 10) : null,
+        reds:     match[11] != null ? parseInt(match[11], 10) : null,
+      };
+
+      out.squad.push(player);
+      if (status) out.injured.push({ name: player.name, status });
     }
   }
 
-  return injured;
+  // Fallback: if the stats regex didn't fire (HTML varies), populate injured
+  // list from the simpler existing approach so we never silently lose that data.
+  if (out.squad.length === 0) {
+    const fallbackRe = /<a\s+href="\/player\/[^"]+">([^<]+)<\/a>([^<]*)/g;
+    while ((m = fallbackRe.exec(squadHtml)) !== null) {
+      const rawStatus = m[2].trim();
+      if (/injur|inactive|suspended|illness|doubt|unavailable|unknown/i.test(rawStatus)) {
+        out.injured.push({ name: swapName(m[1].trim()), status: rawStatus });
+      }
+    }
+  }
+
+  return out;
 }
 
 // ── Step 3: Scrape one team ───────────────────────────────────────────────────
@@ -236,20 +336,27 @@ async function scrapeTeam(displayName, teamUrl) {
     return null;
   }
 
-  const players = parseInjuries(html);
+  const data = parseTeamData(html);
 
-  if (players.length === 0) {
+  // Console summary
+  if (data.coach)    console.log(`  👤 Coach: ${data.coach}`);
+  if (data.stadium)  console.log(`  🏟  Stadium: ${data.stadium} (cap. ${data.capacity?.toLocaleString()})`);
+  console.log(`  👥 Squad: ${data.squad.length} players parsed`);
+  if (data.injured.length === 0) {
     console.log(`  ✓ No injuries/unavailability found`);
   } else {
-    for (const p of players) {
-      console.log(`  ⚠ ${p.name} — ${p.status}`);
-    }
+    for (const p of data.injured) console.log(`  ⚠ ${p.name} — ${p.status}`);
   }
 
   return {
-    url: finalUrl || teamUrl,
-    scraped: new Date().toISOString(),
-    players,
+    url:      finalUrl || teamUrl,
+    scraped:  new Date().toISOString(),
+    coach:    data.coach,
+    stadium:  data.stadium,
+    capacity: data.capacity,
+    squad:    data.squad,
+    // injuries key kept for backward compatibility with existing injuries.json consumer
+    players:  data.injured,
   };
 }
 
@@ -259,12 +366,19 @@ async function main() {
   const leagueArg = args.includes('--league') ? args[args.indexOf('--league') + 1] : null;
   const teamArg   = args.includes('--team')   ? args[args.indexOf('--team') + 1]   : null;
 
-  console.log('\nSoccerway injury scraper');
+  console.log('\nSoccerway squad + injury scraper');
 
-  const outPath = path.join(__dirname, 'data', 'injuries.json');
-  let existing = {};
-  if (fs.existsSync(outPath)) {
-    try { existing = JSON.parse(fs.readFileSync(outPath, 'utf8')); } catch {}
+  const injuriesPath = path.join(__dirname, 'data', 'injuries.json');
+  const squadsPath   = path.join(__dirname, 'data', 'squads.json');
+
+  // Load existing data (cumulative — re-runs add/update without wiping other teams)
+  let existingInjuries = {};
+  let existingSquads   = {};
+  if (fs.existsSync(injuriesPath)) {
+    try { existingInjuries = JSON.parse(fs.readFileSync(injuriesPath, 'utf8')); } catch {}
+  }
+  if (fs.existsSync(squadsPath)) {
+    try { existingSquads = JSON.parse(fs.readFileSync(squadsPath, 'utf8')); } catch {}
   }
 
   // Determine which leagues to discover from
@@ -287,9 +401,10 @@ async function main() {
   if (teamArg) {
     if (!teamUrls[teamArg]) {
       // Fall back to existing URL cache if we have one
-      if (existing[teamArg]?.url) {
-        teamUrls[teamArg] = existing[teamArg].url;
-        console.log(`  Using cached URL for ${teamArg}: ${teamUrls[teamArg]}`);
+      const cachedUrl = existingSquads[teamArg]?.url || existingInjuries[teamArg]?.url;
+      if (cachedUrl) {
+        teamUrls[teamArg] = cachedUrl;
+        console.log(`  Using cached URL for ${teamArg}: ${cachedUrl}`);
       } else {
         console.error(`Could not find Soccerway URL for "${teamArg}". Try running without --team first.`);
         process.exit(1);
@@ -302,27 +417,43 @@ async function main() {
     ? [[teamArg, teamUrls[teamArg]]]
     : Object.entries(teamUrls);
 
-  // Scrape injuries
-  console.log(`Step 2: Scraping injuries for ${teamsToScrape.length} teams...\n`);
+  // Scrape
+  console.log(`Step 2: Scraping ${teamsToScrape.length} teams...\n`);
   let success = 0, fail = 0;
   for (const [displayName, url] of teamsToScrape) {
     console.log(`${displayName}`);
     await sleep(DELAY_MS);
     const result = await scrapeTeam(displayName, url);
     if (result) {
-      existing[displayName] = result;
+      // injuries.json — backward-compatible: just url, scraped, players (injured only)
+      existingInjuries[displayName] = {
+        url:     result.url,
+        scraped: result.scraped,
+        players: result.players,
+      };
+      // squads.json — full team data
+      existingSquads[displayName] = {
+        url:      result.url,
+        scraped:  result.scraped,
+        coach:    result.coach,
+        stadium:  result.stadium,
+        capacity: result.capacity,
+        squad:    result.squad,
+      };
       success++;
     } else {
       fail++;
     }
   }
 
-  // Write output
+  // Write outputs
   fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
-  fs.writeFileSync(outPath, JSON.stringify(existing, null, 2));
+  fs.writeFileSync(injuriesPath, JSON.stringify(existingInjuries, null, 2));
+  fs.writeFileSync(squadsPath,   JSON.stringify(existingSquads,   null, 2));
 
   console.log(`\nDone. ${success} succeeded, ${fail} failed.`);
-  console.log(`Written to ${outPath}`);
+  console.log(`Written to ${injuriesPath}`);
+  console.log(`Written to ${squadsPath}`);
 }
 
 main().catch(err => {
