@@ -1,0 +1,190 @@
+{
+  "134497": {
+    "id": "134497",
+    "name": "Mexico",
+    "tla": "MEX",
+    "crest": "https://r2.thesportsdb.com/images/media/team/badge/3rmosi1748525208.png",
+    "venue": "Estadio Azteca",
+    "colors": {
+      "primary": null,
+      "secondary": null
+    },
+    "coach": null,
+    "squad": [
+      {
+        "id": "34192999",
+        "name": "Alexis Vega",
+        "position": "Left Wing",
+        "nationality": "Mexico",
+        "shirtNumber": 9,
+        "age": 28
+      },
+      {
+        "id": "34175285",
+        "name": "Álvaro Fidalgo",
+        "position": "Central Midfield",
+        "nationality": "Mexico",
+        "shirtNumber": 15,
+        "age": 29
+      },
+      {
+        "id": "34244614",
+        "name": "Armando González",
+        "position": "Attacker",
+        "nationality": "Mexico",
+        "shirtNumber": 34,
+        "age": 23
+      },
+      {
+        "id": "34181103",
+        "name": "Brian Gutiérrez",
+        "position": "Attacking Midfield",
+        "nationality": "Mexico",
+        "shirtNumber": 11,
+        "age": 22
+      },
+      {
+        "id": "34202387",
+        "name": "Carlos Acevedo",
+        "position": "Goalkeeper",
+        "nationality": "Mexico",
+        "shirtNumber": 1,
+        "age": 30
+      },
+      {
+        "id": "34221107",
+        "name": "César Huerta",
+        "position": "Left Wing",
+        "nationality": "Mexico",
+        "shirtNumber": 21,
+        "age": 25
+      },
+      {
+        "id": "34192995",
+        "name": "César Montes",
+        "position": "Centre-Back",
+        "nationality": "Mexico",
+        "shirtNumber": 23,
+        "age": 29
+      },
+      {
+        "id": "34169011",
+        "name": "Edson Álvarez",
+        "position": "Defensive Midfield",
+        "nationality": "Mexico",
+        "shirtNumber": 11,
+        "age": 28
+      },
+      {
+        "id": "34221048",
+        "name": "Érik Lira",
+        "position": "Defensive Midfield",
+        "nationality": "Mexico",
+        "shirtNumber": 6,
+        "age": 26
+      },
+      {
+        "id": "34301802",
+        "name": "Gilberto Mora",
+        "position": "Attacking Midfield",
+        "nationality": "Mexico",
+        "shirtNumber": 19,
+        "age": 17
+      }
+    ]
+  },
+  "136482": {
+    "id": "136482",
+    "name": "South Africa",
+    "tla": "SA",
+    "crest": "https://r2.thesportsdb.com/images/media/team/badge/xjz9j91553368824.png",
+    "venue": "FNB Stadium",
+    "colors": {
+      "primary": null,
+      "secondary": null
+    },
+    "coach": null,
+    "squad": [
+      {
+        "id": "34178395",
+        "name": "Aubrey Modiba",
+        "position": "Left-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 6,
+        "age": 30
+      },
+      {
+        "id": "34228164",
+        "name": "Bradley Cross",
+        "position": "Left-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 48,
+        "age": 25
+      },
+      {
+        "id": "34228107",
+        "name": "Evidence Makgopa",
+        "position": "Attacker",
+        "nationality": "South Africa",
+        "shirtNumber": 17,
+        "age": 26
+      },
+      {
+        "id": "34436085",
+        "name": "Hugo Broos",
+        "position": "Manager",
+        "nationality": "Belgium",
+        "shirtNumber": null,
+        "age": 74
+      },
+      {
+        "id": "34228121",
+        "name": "Ime Okon",
+        "position": "Centre-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 20,
+        "age": 22
+      },
+      {
+        "id": "34228226",
+        "name": "Iqraam Rayners",
+        "position": "Attacker",
+        "nationality": "South Africa",
+        "shirtNumber": 13,
+        "age": 30
+      },
+      {
+        "id": "34228222",
+        "name": "Jayden Adams",
+        "position": "Attacking Midfield",
+        "nationality": "South Africa",
+        "shirtNumber": 8,
+        "age": 25
+      },
+      {
+        "id": "34292710",
+        "name": "Kamogelo Sebelebele",
+        "position": "Right-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 36,
+        "age": 23
+      },
+      {
+        "id": "34228101",
+        "name": "Khuliso Mudau",
+        "position": "Right-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 25,
+        "age": 31
+      },
+      {
+        "id": "34301936",
+        "name": "Khulumani Ndamane",
+        "position": "Centre-Back",
+        "nationality": "South Africa",
+        "shirtNumber": 3,
+        "age": 22
+      }
+    ]
+  }
+}

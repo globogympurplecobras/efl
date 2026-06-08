@@ -47,10 +47,20 @@ function apiGet(path) {
     const url = BASE + path;
     const req = https.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'en-GB,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://www.sofascore.com/',
+        'Origin': 'https://www.sofascore.com',
+        'sec-ch-ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       }
     }, (res) => {
       if (res.statusCode === 429) { reject(new Error('RATE_LIMIT')); return; }

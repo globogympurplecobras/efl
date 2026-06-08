@@ -1,0 +1,56 @@
+{
+  "134497": {
+    "matches": [
+      {
+        "id": "2440222",
+        "utcDate": "2026-06-05T02:00:00",
+        "status": "SCHEDULED",
+        "venue": "Estadio Nemesio Díez",
+        "compCode": "WC",
+        "homeTeam": {
+          "id": "134497",
+          "name": "Mexico",
+          "tla": "MEX"
+        },
+        "awayTeam": {
+          "id": "136140",
+          "name": "Serbia",
+          "tla": "SER"
+        },
+        "score": {
+          "fullTime": {
+            "home": 5,
+            "away": 1
+          }
+        }
+      }
+    ]
+  },
+  "136482": {
+    "matches": [
+      {
+        "id": "2469947",
+        "utcDate": "2026-05-29T16:00:00",
+        "status": "SCHEDULED",
+        "venue": "Orlando Amstel Arena",
+        "compCode": "WC",
+        "homeTeam": {
+          "id": "136482",
+          "name": "South Africa",
+          "tla": "SA"
+        },
+        "awayTeam": {
+          "id": "140261",
+          "name": "Nicaragua",
+          "tla": "NIC"
+        },
+        "score": {
+          "fullTime": {
+            "home": 0,
+            "away": 0
+          }
+        }
+      }
+    ]
+  }
+}
