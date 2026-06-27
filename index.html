@@ -1,238 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Prep — EFL</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EFL Match Prep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- HEADER -->
-<header class="site-header">
-  <span class="brand">Match Prep</span>
-  <div class="header-right">
-    <span id="hdr-comp" style="font-size:11px;color:rgba(255,255,255,.4);font-family:'DM Mono',monospace;letter-spacing:1px">No match selected</span>
-    <button class="export-btn hdr-ghost" onclick="showSelector()">Select Match</button>
-    <button class="export-btn" onclick="window.print()">⬇ Print / PDF</button>
-  </div>
-</header>
+  <!-- ═══════════════════════════════════════════════════════
+       LANDING VIEW
+  ═══════════════════════════════════════════════════════ -->
+  <div id="view-landing" class="view active">
 
-<!-- MATCH SELECTOR OVERLAY -->
-<div class="sel-overlay" id="sel-overlay">
-  <div class="sel-box">
-    <div class="sel-title">Select a Match</div>
-    <div class="sel-sub">Powered by football-data.org · Free tier covers World Cup + Championship</div>
-
-    <div class="sel-fieldset">
-      <div class="sel-row">
-        <div style="flex:1.2">
-          <div class="sel-label">Competition</div>
-          <select class="sel-select" id="sel-comp">
-            <option value="WC" selected>World Cup 2026</option>
-            <option value="ELC">Championship</option>
-            <option value="EL1">League One</option>
-            <option value="EL2">League Two</option>
-          </select>
+    <header class="landing-header">
+      <div class="landing-header-inner">
+        <div class="brand">
+          <span class="brand-efl">EFL</span>
+          <span class="brand-mp">Match Prep</span>
+          <span class="brand-version">3.0</span>
         </div>
-        <div style="flex:1">
-          <div class="sel-label">Date</div>
-          <input class="sel-date" id="sel-date" type="date">
+        <div class="landing-controls">
+          <label class="static-toggle">
+            <input type="checkbox" id="use-static-data">
+            <span class="toggle-track"></span>
+            <span class="toggle-label">Use cached data</span>
+          </label>
         </div>
-        <button class="sel-go" onclick="doFetchFixtures()">Find</button>
       </div>
-    </div>
+    </header>
 
-    <div id="sel-fixtures"></div>
+    <main class="landing-main">
 
-    <div class="sel-manual-toggle">
-      <button class="sel-manual-link" onclick="toggleManualEntry()">↓ Or enter teams manually</button>
-    </div>
-    <div id="sel-manual" style="display:none">
-      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
-        <div class="sel-label" style="margin-bottom:10px">Manual Match Entry</div>
-        <div class="sel-row" style="margin-bottom:8px">
-          <div style="flex:1">
-            <div class="sel-label">Home Team</div>
-            <input class="sel-select" id="man-home" list="man-teams-dl" placeholder="e.g. Wycombe Wanderers" autocomplete="off">
+      <div class="fixture-toolbar">
+        <div class="date-nav">
+          <button class="date-arrow" id="date-prev" aria-label="Previous day">&#8592;</button>
+          <input type="date" id="fixture-date" class="date-input">
+          <button class="date-arrow" id="date-next" aria-label="Next day">&#8594;</button>
+          <button class="date-today" id="date-today">Today</button>
+        </div>
+        <div class="comp-filter" id="comp-filter">
+          <button class="comp-btn active" data-comp="all">All</button>
+          <button class="comp-btn" data-comp="Championship">Championship</button>
+          <button class="comp-btn" data-comp="League One">League One</button>
+          <button class="comp-btn" data-comp="League Two">League Two</button>
+          <button class="comp-btn" data-comp="Carabao Cup">Carabao Cup</button>
+          <button class="comp-btn" data-comp="EFL Trophy">EFL Trophy</button>
+        </div>
+      </div>
+
+      <div class="fixture-list" id="fixture-list"></div>
+
+      <div class="fixture-toolbar-bottom">
+        <button class="refresh-fixtures-btn" id="refresh-fixtures-btn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11.5 2a6 6 0 1 0 .87 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9 7h3.5V3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Refresh fixtures
+        </button>
+      </div>
+
+      <div class="create-fixture-wrap">
+        <button class="create-fixture-btn" id="create-fixture-btn">
+          <span class="create-fixture-icon">+</span>
+          Create custom fixture
+        </button>
+      </div>
+
+    </main>
+
+    <div class="modal-overlay" id="create-fixture-modal" hidden>
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="modal-title">Create fixture</h2>
+          <button class="modal-close" id="create-fixture-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-field-row">
+            <div class="modal-field">
+              <label class="field-label">Home team</label>
+              <div class="autocomplete-wrap">
+                <input type="text" class="field-input" id="custom-home" placeholder="Search team…" autocomplete="off">
+                <div class="autocomplete-dropdown" id="custom-home-dropdown" hidden></div>
+              </div>
+            </div>
+            <div class="modal-field">
+              <label class="field-label">Away team</label>
+              <div class="autocomplete-wrap">
+                <input type="text" class="field-input" id="custom-away" placeholder="Search team…" autocomplete="off">
+                <div class="autocomplete-dropdown" id="custom-away-dropdown" hidden></div>
+              </div>
+            </div>
           </div>
-          <div style="flex:1">
-            <div class="sel-label">Away Team</div>
-            <input class="sel-select" id="man-away" list="man-teams-dl" placeholder="e.g. Rotherham United" autocomplete="off">
+          <div class="modal-field-row">
+            <div class="modal-field">
+              <label class="field-label">Competition</label>
+              <select class="field-input" id="custom-comp">
+                <option>Championship</option>
+                <option>League One</option>
+                <option>League Two</option>
+                <option>Carabao Cup</option>
+                <option>EFL Trophy</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="field-label">Date</label>
+              <input type="date" class="field-input" id="custom-date">
+            </div>
           </div>
         </div>
-        <div class="sel-row" style="margin-bottom:8px">
-          <div style="flex:1.2">
-            <div class="sel-label">Competition</div>
-            <select class="sel-select" id="man-comp">
-              <option value="WC" selected>World Cup 2026</option>
-              <option value="ELC">Championship</option>
-              <option value="EL1">League One</option>
-              <option value="EL2">League Two</option>
-            </select>
-          </div>
-          <div style="flex:1">
-            <div class="sel-label">Date</div>
-            <input class="sel-date" id="man-date" type="date">
-          </div>
-          <button class="sel-go" onclick="doManualSelect()">Load</button>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="create-fixture-cancel">Cancel</button>
+          <button class="btn-primary" id="create-fixture-confirm">Load fixture</button>
         </div>
-        <datalist id="man-teams-dl"></datalist>
+      </div>
+    </div>
+
+  </div><!-- /view-landing -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MATCH VIEW
+  ═══════════════════════════════════════════════════════ -->
+  <div id="view-match" class="view">
+
+    <header class="match-header" id="match-header">
+      <div class="match-header-inner">
+
+        <button class="back-btn" id="back-btn" aria-label="Back to fixtures">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9L11 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <div class="match-teams">
+          <div class="match-team home">
+            <div class="match-team-badge" id="hdr-home-badge"></div>
+            <div class="match-team-info">
+              <span class="match-team-name" id="hdr-home-name">Leeds United</span>
+              <span class="match-team-pos" id="hdr-home-pos">3rd</span>
+            </div>
+          </div>
+
+          <div class="match-vs">
+            <span class="vs-text">vs</span>
+            <span class="match-comp-badge" id="hdr-comp">Championship</span>
+            <span class="match-date-time" id="hdr-datetime">Sat 8 Aug · 15:00</span>
+            <span class="match-venue" id="hdr-venue">Elland Road</span>
+          </div>
+
+          <div class="match-team away">
+            <div class="match-team-info">
+              <span class="match-team-name" id="hdr-away-name">Burnley</span>
+              <span class="match-team-pos" id="hdr-away-pos">7th</span>
+            </div>
+            <div class="match-team-badge" id="hdr-away-badge"></div>
+          </div>
+
+          <div class="match-header-actions">
+            <button class="refresh-match-btn" id="refresh-match-btn" title="Refresh match data">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M13 2.5a7 7 0 1 0 1 5.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.5 8.5H14V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="edit-btn" id="edit-btn">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10.5 1.5L13.5 4.5L5 13H2V10L10.5 1.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Edit
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    <nav class="tab-nav" id="tab-nav">
+      <div class="tab-nav-inner">
+        <button class="tab-btn active" data-tab="main">Main</button>
+        <button class="tab-btn" data-tab="stats">Stats</button>
+        <button class="tab-btn" data-tab="table">Table</button>
+        <button class="tab-btn" data-tab="squads">Squads</button>
+        <button class="tab-btn" data-tab="production">Production</button>
+        <button class="tab-btn" data-tab="xi">Confirmed XI</button>
+        <button class="tab-btn" data-tab="warmups">Warmups</button>
+        <button class="tab-btn" data-tab="ingame">In-Game</button>
+      </div>
+    </nav>
+
+    <div class="tab-content">
+
+      <div class="tab-panel active" id="tab-main"></div>
+
+      <div class="tab-panel" id="tab-stats"></div>
+
+      <div class="tab-panel" id="tab-table">
+        <div class="tab-placeholder">
+          <div class="tab-placeholder-icon">🏆</div>
+          <h2>League Table</h2>
+          <p>Full standings for the relevant competition, with both teams highlighted.</p>
+          <p class="muted">Powered by SportMole — coming in next build.</p>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-squads"></div>
+      <div class="tab-panel" id="tab-production"></div>
+      <div class="tab-panel" id="tab-xi"></div>
+      <div class="tab-panel" id="tab-warmups"></div>
+
+      <div class="tab-panel" id="tab-ingame">
+        <div class="tab-placeholder">
+          <div class="tab-placeholder-icon">⚡</div>
+          <h2>In-Game</h2>
+          <p>Live updates, substitutions and live score — polling every 60 seconds.</p>
+          <p class="muted">Coming in next build.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /view-match -->
+
+  <!-- Player stats modal -->
+  <div class="modal-overlay" id="player-modal" hidden>
+    <div class="player-modal">
+      <div class="player-modal-hero" id="player-modal-hero">
+        <div class="player-modal-badge" id="player-modal-badge"></div>
+        <button class="player-modal-close" id="player-modal-close">&times;</button>
+        <div class="player-modal-photo-wrap">
+          <img id="player-modal-photo" src="" alt="">
+        </div>
+        <div class="player-modal-identity">
+          <div class="player-modal-name" id="player-modal-name"></div>
+          <div class="player-modal-meta" id="player-modal-meta"></div>
+        </div>
+      </div>
+      <div class="player-modal-stats" id="player-modal-stats"></div>
+    </div>
+  </div>
+
+  <!-- Transfers modal -->
+  <div class="modal-overlay" id="transfers-modal" hidden>
+    <div class="transfers-modal">
+      <div class="transfers-modal-header">
+        <span class="section-title" id="transfers-modal-title"></span>
+        <button class="modal-close-btn" id="transfers-modal-close">&times;</button>
+      </div>
+      <div class="transfers-modal-body" id="transfers-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Manager image crop modal -->
+  <div id="mgr-crop-modal">
+    <div id="mgr-crop-inner">
+      <h3>Edit manager image</h3>
+      <div id="mgr-crop-source">
+        <input type="text" id="mgr-crop-url" placeholder="Paste image URL…">
+        <button id="mgr-crop-url-btn">Load</button>
+        <button id="mgr-crop-file-btn">Upload</button>
+        <input type="file" id="mgr-crop-file" accept="image/*" style="display:none">
+      </div>
+      <div id="mgr-crop-viewport">
+        <img id="mgr-crop-img" src="" alt="">
+      </div>
+      <p id="mgr-crop-hint">Drag to reposition · Scroll or use slider to zoom</p>
+      <input type="range" id="mgr-crop-zoom" min="0.5" max="4" step="0.01" value="1">
+      <div id="mgr-crop-actions">
+        <button id="mgr-crop-cancel">Cancel</button>
+        <button id="mgr-crop-save" disabled>Save</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- MATCH BANNER (shown when match selected) -->
-<div id="match-banner" style="display:none"></div>
-
-<!-- TAB BAR (shown when match selected) -->
-<div class="tab-bar" id="main-tab-bar" style="display:none">
-  <button class="tab-btn active" onclick="switchTab('match',this)">Match Data</button>
-  <button class="tab-btn" onclick="switchTab('production',this)">Production</button>
-  <button class="tab-btn" onclick="switchTab('xi',this)">Confirmed XI</button>
-</div>
-
-<!-- ══════ TAB 1 — MATCH DATA ══════ -->
-<div id="tab-match" class="tab-panel active" style="display:none">
-<div class="page">
-  <div class="two-col section" id="s-managers"></div>
-  <div class="two-col section" id="s-kits"></div>
-  <div class="sep-label" id="sep-form"><span>Form &amp; Key Players</span></div>
-  <div class="two-col section" id="s-form"></div>
-  <div class="sep-label" id="sep-scout"><span>Scout Notes</span></div>
-  <div class="two-col section" id="s-scout"></div>
-  <div class="sep-label" id="sep-inj"><span>Injuries &amp; Availability</span></div>
-  <div class="two-col section" id="s-injuries"></div>
-  <div class="sep-label" id="sep-form2"><span>Expected Formations</span></div>
-  <div class="two-col section" id="s-formations"></div>
-  <div class="sep-label" id="sep-h2h"><span>Head to Head</span></div>
-  <div class="two-col section" id="s-h2h"></div>
-  <div class="sep-label" id="sep-table"><span>League Table</span></div>
-  <div class="card section" id="s-table"></div>
-  <div class="sep-label print-hide" id="sep-squads"><span>Squad Lists</span></div>
-  <div class="two-col section print-hide" id="s-squads"></div>
-  <div id="s-footer" style="text-align:center;padding:12px 0;font-size:10px;color:var(--muted);border-top:1px solid var(--border);font-family:'DM Mono',monospace;letter-spacing:1px"></div>
-</div>
-</div>
-
-<!-- ══════ TAB 2 — PRODUCTION ══════ -->
-<div id="tab-production" class="tab-panel">
-<div class="page">
-  <div class="sep-label"><span>Team Overview</span></div>
-  <div class="prod-two-col" id="s-prod-teams"></div>
-
-  <div class="sep-label"><span>Ground Layout &amp; Notes</span></div>
-  <div class="ground-layout-row">
-    <div class="ground-card">
-      <p class="ground-instructions">Cam 1 &amp; 2 are fixed (South Stand). Select type then click the diagram to place. Drag to reposition. Double-click to remove.</p>
-      <div class="fixed-cam-row">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase">Fixed:</span>
-        <span class="fixed-cam-badge"><span class="fixed-cam-dot"></span>Cam 1</span>
-        <span class="fixed-cam-badge"><span class="fixed-cam-dot"></span>Cam 2</span>
-      </div>
-      <div class="place-type-row">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase">Place:</span>
-        <button class="place-type-btn active" onclick="setPlaceType('cam3',this)">📷 Cam 3</button>
-        <button class="place-type-btn" onclick="setPlaceType('cam4',this)">📷 Cam 4</button>
-        <button class="place-type-btn" onclick="setPlaceType('dugouts',this)">🟨 Dugouts</button>
-        <button class="place-type-btn" onclick="setPlaceType('away-fans',this)">🟨 Away Fans</button>
-        <button class="place-type-btn" onclick="setPlaceType('tunnel',this)">⬜ Tunnel</button>
-        <button class="place-type-btn" style="margin-left:auto;color:var(--bad)" onclick="clearAllMarkers()">✕ Clear All</button>
-      </div>
-      <div style="position:relative;width:100%">
-        <svg id="ground-svg" viewBox="0 0 700 420" style="width:100%;height:auto;border:1px solid var(--border);cursor:crosshair;" xmlns="http://www.w3.org/2000/svg">
-          <rect x="0" y="0" width="700" height="420" fill="#E8E5DF"/>
-          <rect x="0" y="0" width="700" height="38" fill="#CCCAC4"/>
-          <rect x="0" y="382" width="700" height="38" fill="#CCCAC4"/>
-          <rect x="0" y="0" width="38" height="420" fill="#D8D5CF"/>
-          <rect x="662" y="0" width="38" height="420" fill="#D8D5CF"/>
-          <text x="350" y="24" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="13" font-weight="700" fill="#999" letter-spacing="2">NORTH STAND</text>
-          <text x="350" y="406" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="13" font-weight="700" fill="#999" letter-spacing="2">SOUTH STAND</text>
-          <text x="19" y="214" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="12" font-weight="700" fill="#999" letter-spacing="1" transform="rotate(-90,19,214)">EAST STAND</text>
-          <text x="681" y="214" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="12" font-weight="700" fill="#999" letter-spacing="1" transform="rotate(90,681,214)">WEST STAND</text>
-          <rect x="48" y="48" width="604" height="324" fill="#4A8A2A" rx="2"/>
-          <rect x="48" y="48" width="604" height="324" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
-          <line x1="350" y1="48" x2="350" y2="372" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
-          <circle cx="350" cy="210" r="46" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
-          <circle cx="350" cy="210" r="3" fill="rgba(255,255,255,.5)"/>
-          <rect x="48" y="128" width="122" height="164" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
-          <rect x="530" y="128" width="122" height="164" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
-          <rect x="48" y="170" width="42" height="80" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
-          <rect x="610" y="170" width="42" height="80" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
-          <rect x="30" y="192" width="18" height="36" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
-          <rect x="652" y="192" width="18" height="36" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
-          <circle cx="316" cy="401" r="14" fill="#F97316" stroke="white" stroke-width="2"/>
-          <text x="316" y="405" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="10" font-weight="700" fill="white" letter-spacing="0.5">CAM 1</text>
-          <circle cx="384" cy="401" r="14" fill="#2563EB" stroke="white" stroke-width="2"/>
-          <text x="384" y="405" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="10" font-weight="700" fill="white" letter-spacing="0.5">CAM 2</text>
-          <g id="marker-layer"></g>
-        </svg>
-      </div>
-      <div class="marker-legend" id="marker-legend"></div>
-    </div>
-
-    <div class="ground-notes-card">
-      <div class="section-title" id="ground-notes-title">Ground Notes</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.6">Saved per venue — reloads for all future matches at this ground.</div>
-      <textarea class="ground-notes-ta" id="ground-notes" placeholder="e.g. Tunnel entrance east side. OB truck Gate B. Power supply near turnstile block C…"></textarea>
-      <div style="display:flex;align-items:center;margin-top:6px">
-        <button class="save-btn" onclick="saveGroundNotes()">Save Notes</button>
-        <span class="saved-msg" id="ground-notes-saved">✓ Saved</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="sep-label"><span>Camera Operators</span></div>
-  <div class="cam-ops-grid" id="cam-ops-grid"></div>
-</div>
-</div>
-
-<!-- ══════ TAB 3 — CONFIRMED XI ══════ -->
-<div id="tab-xi" class="tab-panel">
-<div class="page">
-  <div class="xi-team-tabs">
-    <button class="xi-team-btn active-home" id="xi-btn-home" onclick="switchXiTeam('home',this)">Home Team</button>
-    <button class="xi-team-btn" id="xi-btn-away" onclick="switchXiTeam('away',this)">Away Team</button>
-    <button class="save-btn" id="xi-api-import" onclick="importApiLineup()" style="margin-left:auto;background:#166534">↓ Import API Lineup</button>
-  </div>
-  <div class="xi-layout">
-    <div>
-      <label class="xi-formation-label" for="xi-formation">Formation</label>
-      <select class="xi-formation-select" id="xi-formation" onchange="renderXiPitch()">
-        <option value="4-4-2">4–4–2</option>
-        <option value="4-3-3">4–3–3</option>
-        <option value="4-2-3-1">4–2–3–1</option>
-        <option value="4-3-1-2">4–3–1–2</option>
-        <option value="3-5-2">3–5–2</option>
-        <option value="3-4-3">3–4–3</option>
-        <option value="5-3-2">5–3–2</option>
-        <option value="5-4-1">5–4–1</option>
-      </select>
-      <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="save-btn" onclick="saveXiData()">Save XI</button>
-        <button class="save-btn" onclick="loadXiData()" style="background:var(--subtle);color:var(--text);border:1px solid var(--border)">Reload</button>
-        <button class="save-btn" onclick="fillXiFromSquad()" style="background:#1D4ED8;color:white;border:none">↓ Fill from Squad</button>
-        <span class="saved-msg" id="xi-saved-msg">✓ Saved</span>
-      </div>
-      <div class="xi-player-inputs" id="xi-inputs"></div>
-    </div>
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div id="xi-pitch-title" style="font-size:16px;font-weight:700;color:var(--home)">Home Team</div>
-        <div id="xi-formation-badge" style="font-size:15px;font-weight:700;color:var(--muted)">4–4–2</div>
-      </div>
-      <div class="xi-pitch" id="xi-pitch"></div>
-      <p class="footnote" style="margin-top:7px">Image-ready: drop &lt;img&gt; inside each .xi-avatar to replace initials with player photos.</p>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- PRINT VIEW -->
-<div id="print-view"></div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

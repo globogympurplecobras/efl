@@ -1,1 +1,26 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Cloudflare Worker (deployed separately via wrangler)
+worker/
+
+# Seed scripts (run locally, not part of the site)
+seed-teams.js
+seed-fixtures.js
+seed-coaches.js
+
+# Dev/research
+probes/
+md/
+1.0/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env / secrets
 .env
+.env.*
+wrangler.toml
