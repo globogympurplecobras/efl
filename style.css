@@ -54,6 +54,14 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
 .view { display: none; }
 .view.active { display: block; }
 
+/* Auth gate */
+.auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+.auth-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 320px; display: flex; flex-direction: column; gap: 12px; }
+.auth-input { font-size: 15px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); outline: none; }
+.auth-input:focus { border-color: var(--accent); }
+.auth-btn { padding: 10px; font-size: 15px; border-radius: 8px; }
+.auth-error { font-size: 13px; color: #e55; text-align: center; margin: 0; }
+
 
 /* ════════════════════════════════════════════════════════
    LANDING PAGE
@@ -378,6 +386,8 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
 .manager-text { flex: 1; min-width: 0; }
 .manager-name  { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.2; margin-bottom: 3px; }
 .manager-title { font-size: 13px; color: var(--text-3); font-weight: 500; }
+.manager-name-edit-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.manager-name-input { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; min-width: 0; flex: 1; }
 
 .manager-kit-display { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .kit-large { height: 110px; width: auto; display: block; }

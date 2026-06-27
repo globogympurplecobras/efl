@@ -552,6 +552,7 @@ function buildStaticFixture(card) {
     events:          [],
     scores:          { ht:null, ft:null, current:null },
     standings:       [],
+    standingsLoaded: false,
   };
 }
 
@@ -992,6 +993,7 @@ async function loadFixture(card) {
     if (standingsRes.status === 'fulfilled' && standingsRes.value) {
       fixture.standings = parseStandings(standingsRes.value, APP.teamsData);
     }
+    fixture.standingsLoaded = true;
 
     if (h2hRes.status === 'fulfilled') {
       fixture.h2h = parseH2H(h2hRes.value.data || [], fixture.home.id, fixture.away.id, APP.teamsData);
@@ -1074,6 +1076,8 @@ async function loadFixture(card) {
   await Promise.allSettled([
     applyManagerImageOverride(fixture.home.id).then(url => { if (url && fixture.home.manager) fixture.home.manager.image = url; }),
     applyManagerImageOverride(fixture.away.id).then(url => { if (url && fixture.away.manager) fixture.away.manager.image = url; }),
+    applyManagerNameOverride(fixture.home.id).then(name => { if (name && fixture.home.manager) fixture.home.manager.name = name; }),
+    applyManagerNameOverride(fixture.away.id).then(name => { if (name && fixture.away.manager) fixture.away.manager.name = name; }),
     applyKitColorOverrides(fixture.home),
     applyKitColorOverrides(fixture.away),
     applyKitImageOverrides(fixture.home),
@@ -1111,6 +1115,7 @@ async function refreshFixture(bust = true) {
     }
     if (standingsRes.status === 'fulfilled' && standingsRes.value)
       f.standings = parseStandings(standingsRes.value, APP.teamsData);
+    f.standingsLoaded = true;
     if (h2hRes.status === 'fulfilled')
       f.h2h = parseH2H(h2hRes.value.data || [], f.home.id, f.away.id, APP.teamsData);
     if (homeFormRes.status === 'fulfilled') {
@@ -1339,10 +1344,11 @@ function renderManagerCard(team, side) {
     const kit = team.kits[k];
     // A kit has "own" colours only if explicitly stored — not just falling back to team primary
     const hasOwnColors = !!(kit.colors?.primary || kit.primary);
-    const pc  = hasOwnColors ? (kit.colors?.primary   || kit.primary)   : null;
-    const sc  = hasOwnColors ? (kit.colors?.secondary || kit.secondary) : null;
+    // For home kit, fall back to team.colors (always populated from teams.json) so dots aren't grey by default
+    const pc  = hasOwnColors ? (kit.colors?.primary   || kit.primary)   : (k === 'home' ? (team.colors?.primary   || null) : null);
+    const sc  = hasOwnColors ? (kit.colors?.secondary || kit.secondary) : (k === 'home' ? (team.colors?.secondary || null) : null);
     const swatchImg = `<img class="kit-img" src="${team.kits[k]?.imageUrl || `./data/kits/${team.id}-${k}.png`}" alt="${k}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`;
-    const dotStyle  = hasOwnColors
+    const dotStyle  = pc
       ? `<div class="kit-dot" style="background:${pc}"></div><div class="kit-dot" style="background:${sc || '#ffffff'}"></div>`
       : `<div class="kit-dot kit-dot-unset"></div><div class="kit-dot kit-dot-unset"></div>`;
     const dots = `<div class="kit-color-pair" data-kit-dots="${side}-${k}">${dotStyle}</div>`;
@@ -1386,10 +1392,17 @@ function renderManagerCard(team, side) {
       <button class="kit-color-save btn-primary" style="padding:4px 10px;font-size:12px">Save</button>
     </div>` : '';
 
+  const mgrNameHtml = APP.editMode
+    ? `<div class="manager-name-edit-wrap">
+        <input class="manager-name-input" data-side="${side}" data-team="${team.id}" value="${esc(mgr.name || '')}" placeholder="Manager name">
+        <button class="manager-name-save btn-primary" data-side="${side}" data-team="${team.id}" style="padding:3px 8px;font-size:11px">Save</button>
+      </div>`
+    : `<div class="manager-name">${esc(mgr.name || 'TBC')}</div>`;
+
   return `<div class="manager-card" data-side="${side}">
     <div class="manager-image-wrap" style="border-color:${color}">${mgrImg}</div>
     <div class="manager-text">
-      <div class="manager-name">${esc(mgr.name || 'TBC')}</div>
+      ${mgrNameHtml}
       <div class="manager-title">Head Coach</div>
     </div>
     <div class="manager-kit-display">${largeKitHtml}</div>
@@ -1753,13 +1766,13 @@ function renderH2H(f) {
   const mrScorers = mr.scorers.length
     ? mr.scorers.map(s => `<div class="h2h-event-row">
         <span class="h2h-event-icon">⚽</span>
-        <span>${teamBadgeSmall(s.teamId)}${esc(pName(s.playerId, s.playerName))}</span>
+        <span>${teamBadgeSmall(s.teamId)}${esc(lastName(s.playerName) || pName(s.playerId, s.playerName))}</span>
         <span class="h2h-event-minute">${s.minute}'</span>
       </div>`).join('')
     : `<p class="notes-empty" style="font-size:12px">No scorer data.</p>`;
 
   const mrReds = mr.redCards.map(r =>
-    `<div class="h2h-event-row"><span class="h2h-event-icon">🟥</span><span>${teamBadgeSmall(r.teamId)}${esc(pName(r.playerId, r.playerName))}</span><span class="h2h-event-minute">${r.minute}'</span></div>`
+    `<div class="h2h-event-row"><span class="h2h-event-icon">🟥</span><span>${teamBadgeSmall(r.teamId)}${esc(lastName(r.playerName) || pName(r.playerId, r.playerName))}</span><span class="h2h-event-minute">${r.minute}'</span></div>`
   ).join('');
 
   el.innerHTML = `<div class="h2h-section">
@@ -2357,7 +2370,7 @@ function renderWarmupsTeam(team, side) {
 function renderTableTab(f) {
   const el=document.getElementById('tab-table');
   if (!f.standings||!f.standings.length) {
-    el.innerHTML=`<div style="padding:32px;text-align:center;color:var(--text-3)"><p>Standings loading…</p></div>`;
+    el.innerHTML=`<div style="padding:32px;text-align:center;color:var(--text-3)"><p>${f.standingsLoaded ? 'No standings data available yet.' : 'Standings loading…'}</p></div>`;
     return;
   }
   const rows=f.standings.map(row=>{
@@ -2890,7 +2903,30 @@ function toggleEditMode() {
 // INIT
 // ════════════════════════════════════════════════════════
 
+const AUTH_PASSWORD = 'chairboys';
+const AUTH_KEY      = 'efl_authed';
+
 async function init() {
+  // Auth gate — require password once per session
+  if (sessionStorage.getItem(AUTH_KEY) !== '1') {
+    showView('auth');
+    await new Promise(resolve => {
+      const submit = () => {
+        const pw = document.getElementById('auth-password').value;
+        if (pw === AUTH_PASSWORD) {
+          sessionStorage.setItem(AUTH_KEY, '1');
+          resolve();
+        } else {
+          document.getElementById('auth-error').style.display = '';
+          document.getElementById('auth-password').value = '';
+          document.getElementById('auth-password').focus();
+        }
+      };
+      document.getElementById('auth-submit').addEventListener('click', submit);
+      document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    });
+  }
+
   await loadAppData();
 
   const dateInput=document.getElementById('fixture-date');
@@ -3275,6 +3311,34 @@ async function init() {
     }
   });
 
+  // Manager name save
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('.manager-name-save');
+    if (!btn) return;
+    const side   = btn.dataset.side;
+    const teamId = btn.dataset.team;
+    const input  = document.querySelector(`.manager-name-input[data-side="${side}"]`);
+    if (!input) return;
+    const name = input.value.trim();
+    btn.textContent = 'Saving…'; btn.disabled = true;
+    try {
+      await fetch(`${WORKER}/overrides/manager-name:${teamId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(name),
+      });
+      const f = APP.currentFixture;
+      if (f?.[side]?.manager) f[side].manager.name = name;
+      // Update teamsData so it persists within session
+      if (APP.teamsData[String(teamId)]?.manager) APP.teamsData[String(teamId)].manager.name = name;
+      btn.textContent = 'Saved ✓';
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
+    } catch(err) {
+      alert('Save failed: ' + err.message);
+      btn.textContent = 'Save'; btn.disabled = false;
+    }
+  });
+
   showView('landing');
   renderLanding();
 }
@@ -3513,6 +3577,15 @@ async function applyCaptainOverride(teamId) {
 async function applyManagerImageOverride(teamId) {
   try {
     const res = await fetch(`${WORKER}/overrides/manager-image:${teamId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data === 'string' && data ? data : null;
+  } catch { return null; }
+}
+
+async function applyManagerNameOverride(teamId) {
+  try {
+    const res = await fetch(`${WORKER}/overrides/manager-name:${teamId}`);
     if (!res.ok) return null;
     const data = await res.json();
     return typeof data === 'string' && data ? data : null;

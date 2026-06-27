@@ -12,9 +12,27 @@
 <body>
 
   <!-- ═══════════════════════════════════════════════════════
+       AUTH VIEW
+  ═══════════════════════════════════════════════════════ -->
+  <div id="view-auth" class="view active">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="brand" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-efl">EFL</span>
+          <span class="brand-mp">Match Prep</span>
+          <span class="brand-version">3.0</span>
+        </div>
+        <input id="auth-password" type="password" class="auth-input" placeholder="Password" autocomplete="current-password">
+        <button id="auth-submit" class="btn-primary auth-btn">Enter</button>
+        <p id="auth-error" class="auth-error" style="display:none">Incorrect password.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
        LANDING VIEW
   ═══════════════════════════════════════════════════════ -->
-  <div id="view-landing" class="view active">
+  <div id="view-landing" class="view">
 
     <header class="landing-header">
       <div class="landing-header-inner">
