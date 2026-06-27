@@ -3257,6 +3257,16 @@ async function init() {
       }
       // Re-apply CSS vars so pill colours update immediately
       setTeamCSSVars(f);
+      // Remove "not set" label and fix dots on the swatch now that colours are saved
+      const swatch = document.querySelector(`.kit-swatch[data-side="${side}"][data-kit="${kit}"]`);
+      if (swatch) {
+        const unsetLabel = swatch.querySelector('.kit-label-unset');
+        if (unsetLabel) unsetLabel.remove();
+        const dotsEl = swatch.querySelector(`[data-kit-dots="${side}-${kit}"]`);
+        if (dotsEl) {
+          dotsEl.querySelectorAll('.kit-dot').forEach(d => d.classList.remove('kit-dot-unset'));
+        }
+      }
       btn.textContent = 'Saved ✓';
       setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
     } catch(err) {
