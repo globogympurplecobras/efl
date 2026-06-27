@@ -3859,7 +3859,7 @@ function renderInGameTab(f) {
         <div class="ig-score-header">
           <div class="ig-score-team ig-score-team-home">
             <img src="./data/badges/${f.home.id}.png" class="ig-badge" alt="${esc(f.home.name)}" onerror="this.style.opacity=0">
-            <span class="ig-score-team-name">${esc(f.home.name)}</span>
+            <span class="ig-score-team-name">${esc(f.home.shortName || f.home.name)}</span>
           </div>
           <div class="ig-score-center">
             <div class="ig-score-digits">${hg} – ${ag}</div>
@@ -3867,7 +3867,7 @@ function renderInGameTab(f) {
           </div>
           <div class="ig-score-team ig-score-team-away">
             <img src="./data/badges/${f.away.id}.png" class="ig-badge" alt="${esc(f.away.name)}" onerror="this.style.opacity=0">
-            <span class="ig-score-team-name">${esc(f.away.name)}</span>
+            <span class="ig-score-team-name">${esc(f.away.shortName || f.away.name)}</span>
           </div>
         </div>
       </div>
