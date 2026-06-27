@@ -1750,28 +1750,32 @@ body.edit-mode .editable {
 
 /* Score header */
 .ig-score-header {
-  background: #2E2C2A;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px 12px;
+  display: flex; align-items: stretch; justify-content: space-between;
+  border-bottom: 1px solid var(--border); overflow: hidden;
 }
 .ig-score-team {
-  display: flex; align-items: center; gap: 8px; flex: 1;
+  display: flex; align-items: center; gap: 12px; flex: 1; padding: 16px 20px;
+}
+.ig-score-team.ig-score-team-home {
+  background: linear-gradient(to right, color-mix(in srgb, var(--home-primary) 18%, transparent), transparent);
 }
 .ig-score-team-away {
-  justify-content: flex-end; flex-direction: row-reverse;
+  flex-direction: row-reverse;
+  background: linear-gradient(to left, color-mix(in srgb, var(--away-primary) 18%, transparent), transparent);
 }
-.ig-badge { width: 28px; height: 28px; object-fit: contain; }
-.ig-score-team-name { font-size: 13px; font-weight: 500; color: #fff; }
+.ig-badge { width: 40px; height: 40px; object-fit: contain; }
+.ig-score-team-name { font-size: 13px; font-weight: 500; color: var(--text); }
 .ig-score-center {
-  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 0 24px; flex-shrink: 0;
 }
-.ig-score-digits { font-size: 26px; font-weight: 500; color: #fff; letter-spacing: 2px; line-height: 1; }
+.ig-score-digits { font-size: 28px; font-weight: 400; color: var(--text); letter-spacing: 4px; line-height: 1; }
 .ig-score-state {
-  font-size: 11px; color: rgba(255,255,255,.55);
+  font-size: 10px; color: var(--text-3);
   display: flex; align-items: center; gap: 4px;
 }
 .ig-live-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
+  width: 5px; height: 5px; border-radius: 50%; background: #4ade80;
   animation: ig-pulse 1.5s infinite;
 }
 @keyframes ig-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }

@@ -3857,7 +3857,7 @@ function renderInGameTab(f) {
 
       <div class="ig-card">
         <div class="ig-score-header">
-          <div class="ig-score-team">
+          <div class="ig-score-team ig-score-team-home">
             <img src="./data/badges/${f.home.id}.png" class="ig-badge" alt="${esc(f.home.name)}" onerror="this.style.opacity=0">
             <span class="ig-score-team-name">${esc(f.home.name)}</span>
           </div>
