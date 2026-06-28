@@ -913,7 +913,7 @@ function renderFixtureCard(f) {
       <div class="fixture-team home">
         <div class="fixture-badge">${teamBadge(f.home, 40)}</div>
         <div>
-          <div class="fixture-team-name">${esc(f.home.name)}</div>
+          <div class="fixture-team-name" data-tla="${esc(f.home.tla || f.home.shortName || f.home.name)}">${esc(f.home.name)}</div>
           <div class="fixture-team-pos">${f.home.position ? ordinal(f.home.position) : ''}</div>
         </div>
       </div>
@@ -924,7 +924,7 @@ function renderFixtureCard(f) {
       <div class="fixture-team away">
         <div class="fixture-badge">${teamBadge(f.away, 40)}</div>
         <div style="text-align:right">
-          <div class="fixture-team-name">${esc(f.away.name)}</div>
+          <div class="fixture-team-name" data-tla="${esc(f.away.tla || f.away.shortName || f.away.name)}">${esc(f.away.name)}</div>
           <div class="fixture-team-pos">${f.away.position ? ordinal(f.away.position) : ''}</div>
         </div>
       </div>
@@ -1173,11 +1173,18 @@ function setTeamCSSVars(f) {
 // ════════════════════════════════════════════════════════
 
 function renderMatchHeader(f) {
+  const compAbbr = { 'Championship':'CH', 'League One':'L1', 'League Two':'L2', 'Carabao Cup':'CC', 'EFL Trophy':'EFLT', 'FA Cup':'FA' };
+  const mobileComp = compAbbr[f.comp] || f.comp.slice(0,4);
+  const mobileDate = (() => { const d = new Date(f.date+'T12:00:00'); return `${d.getDate()}/${d.getMonth()+1}`; })();
   document.getElementById('hdr-comp').textContent      = f.comp;
+  document.getElementById('hdr-comp').dataset.mobile   = mobileComp;
   document.getElementById('hdr-datetime').textContent  = `${fmtShortDate(f.date)} · ${f.kickoff}`;
+  document.getElementById('hdr-datetime').dataset.mobile = `${mobileDate} · ${f.kickoff}`;
   document.getElementById('hdr-venue').textContent     = f.venue;
   document.getElementById('hdr-home-name').textContent = f.home.name;
   document.getElementById('hdr-away-name').textContent = f.away.name;
+  document.getElementById('hdr-home-tla').textContent  = f.home.tla || f.home.shortName || f.home.name;
+  document.getElementById('hdr-away-tla').textContent  = f.away.tla || f.away.shortName || f.away.name;
   document.getElementById('hdr-home-pos').textContent  = f.home.position ? ordinal(f.home.position) : '';
   document.getElementById('hdr-away-pos').textContent  = f.away.position ? ordinal(f.away.position) : '';
   document.getElementById('hdr-home-badge').innerHTML  = teamBadge(f.home, 50);
@@ -1217,24 +1224,29 @@ function switchTab(name) {
 
 function renderMainTab(f) {
   const el = document.getElementById('tab-main');
-  const transfersHtml = isTransferWindow()
-    ? `${renderTransfersSection(f.home)}${renderTransfersSection(f.away)}`
-    : '';
+  const homeTransfers = isTransferWindow() ? renderTransfersSection(f.home) : '';
+  const awayTransfers = isTransferWindow() ? renderTransfersSection(f.away) : '';
+  const hw = s => `<div class="main-side-wrap home-col">${s}</div>`;
+  const aw = s => `<div class="main-side-wrap away-col hidden">${s}</div>`;
   el.innerHTML = `
+    <div class="main-team-toggle">
+      <button class="main-toggle-btn active" data-side="home">${esc(f.home.shortName || f.home.name)}</button>
+      <button class="main-toggle-btn" data-side="away">${esc(f.away.shortName || f.away.name)}</button>
+    </div>
     <div class="main-grid">
-      ${renderManagerCard(f.home, 'home')}
-      ${renderManagerCard(f.away, 'away')}
-      ${transfersHtml}
-      ${renderFormSection(f.home)}
-      ${renderFormSection(f.away)}
-      ${renderLastMatchSection(f.home)}
-      ${renderLastMatchSection(f.away)}
-      ${renderKeyPlayersSection(f.home, 'home')}
-      ${renderKeyPlayersSection(f.away, 'away')}
-      ${renderNotesSection(f.home, 'home')}
-      ${renderNotesSection(f.away, 'away')}
-      ${renderInjuriesSection(f.home)}
-      ${renderInjuriesSection(f.away)}
+      ${hw(renderManagerCard(f.home, 'home'))}
+      ${aw(renderManagerCard(f.away, 'away'))}
+      ${isTransferWindow() ? hw(renderTransfersSection(f.home)) + aw(renderTransfersSection(f.away)) : ''}
+      ${hw(renderFormSection(f.home))}
+      ${aw(renderFormSection(f.away))}
+      ${hw(renderLastMatchSection(f.home))}
+      ${aw(renderLastMatchSection(f.away))}
+      ${hw(renderKeyPlayersSection(f.home, 'home'))}
+      ${aw(renderKeyPlayersSection(f.away, 'away'))}
+      ${hw(renderNotesSection(f.home, 'home'))}
+      ${aw(renderNotesSection(f.away, 'away'))}
+      ${hw(renderInjuriesSection(f.home))}
+      ${aw(renderInjuriesSection(f.away))}
     </div>
     <div id="section-formation"></div>
     <div id="section-h2h"></div>
@@ -1802,6 +1814,17 @@ function renderH2H(f) {
 // ════════════════════════════════════════════════════════
 
 function initMainTabEvents(f) {
+  // Mobile team toggle
+  document.querySelectorAll('.main-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const side = btn.dataset.side;
+      document.querySelectorAll('.main-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.main-side-wrap').forEach(col => {
+        col.classList.toggle('hidden', !col.classList.contains(`${side}-col`));
+      });
+    });
+  });
+
   // Form tile click — toggle detail panel
   document.querySelectorAll('.form-tile[data-form-idx]').forEach(tile => {
     tile.addEventListener('click', () => {
@@ -1881,16 +1904,16 @@ function renderProductionTab(f) {
       <div style="display:flex;align-items:center;gap:10px;flex:1">
         ${teamBadge(f.home,40)}
         <div>
-          <div style="font-family:Inter;font-weight:800;font-size:16px">${esc(f.home.name)}</div>
-          <div style="font-size:12px;color:var(--text-3)">${f.home.position?ordinal(f.home.position):''} · ${esc(f.comp)}</div>
+          <div class="prod-team-name" data-tla="${esc(f.home.tla||f.home.shortName||f.home.name)}" style="font-family:Inter;font-weight:800;font-size:16px">${esc(f.home.name)}</div>
+          <div class="prod-team-comp" style="font-size:12px;color:var(--text-3)">${f.home.position?ordinal(f.home.position):''} · ${esc(f.comp)}</div>
         </div>
       </div>
       <div style="font-family:Inter;font-weight:700;color:var(--text-3)">vs</div>
       <div style="display:flex;align-items:center;gap:10px;flex:1;flex-direction:row-reverse">
         ${teamBadge(f.away,40)}
         <div style="text-align:right">
-          <div style="font-family:Inter;font-weight:800;font-size:16px">${esc(f.away.name)}</div>
-          <div style="font-size:12px;color:var(--text-3)">${f.away.position?ordinal(f.away.position):''} · ${esc(f.comp)}</div>
+          <div class="prod-team-name" data-tla="${esc(f.away.tla||f.away.shortName||f.away.name)}" style="font-family:Inter;font-weight:800;font-size:16px">${esc(f.away.name)}</div>
+          <div class="prod-team-comp" style="font-size:12px;color:var(--text-3)">${f.away.position?ordinal(f.away.position):''} · ${esc(f.comp)}</div>
         </div>
       </div>
     </div>
@@ -3832,7 +3855,7 @@ function renderInGameTab(f) {
     ).join('');
 
     return `<div class="ig-lineup-col ig-lineup-${side}">
-      <div class="ig-lineup-head">${esc(team.name)}${esc(formation)}</div>
+      <div class="ig-lineup-head"><span class="name-full">${esc(team.name)}${esc(formation)}</span><span class="name-tla">${esc(team.tla||team.shortName||team.name)}</span></div>
       ${xiRows}
       <div class="ig-bench-divider"></div>
       <div class="ig-bench-label">Bench</div>
@@ -3942,7 +3965,7 @@ function renderInGameTab(f) {
         <div class="ig-score-header">
           <div class="ig-score-team ig-score-team-home">
             <img src="./data/badges/${f.home.id}.png" class="ig-badge" alt="${esc(f.home.name)}" onerror="this.style.opacity=0">
-            <span class="ig-score-team-name">${esc(f.home.shortName || f.home.name)}</span>
+            <span class="ig-score-team-name"><span class="name-full">${esc(f.home.shortName || f.home.name)}</span><span class="name-tla">${esc(f.home.tla||f.home.shortName||f.home.name)}</span></span>
           </div>
           <div class="ig-score-center">
             <div class="ig-score-digits">${hg} – ${ag}</div>
@@ -3950,7 +3973,7 @@ function renderInGameTab(f) {
           </div>
           <div class="ig-score-team ig-score-team-away">
             <img src="./data/badges/${f.away.id}.png" class="ig-badge" alt="${esc(f.away.name)}" onerror="this.style.opacity=0">
-            <span class="ig-score-team-name">${esc(f.away.shortName || f.away.name)}</span>
+            <span class="ig-score-team-name"><span class="name-full">${esc(f.away.shortName || f.away.name)}</span><span class="name-tla">${esc(f.away.tla||f.away.shortName||f.away.name)}</span></span>
           </div>
         </div>
       </div>

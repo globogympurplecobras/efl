@@ -56,7 +56,9 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
 
 /* Auth gate */
 .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
-.auth-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 320px; display: flex; flex-direction: column; gap: 12px; }
+.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 320px; display: flex; flex-direction: column; gap: 12px; }
+.auth-card .brand-efl  { color: var(--text); }
+.auth-card .brand-mp   { color: var(--text-2); }
 .auth-input { font-size: 15px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); outline: none; }
 .auth-input:focus { border-color: var(--accent); }
 .auth-btn { padding: 10px; font-size: 15px; border-radius: 8px; }
@@ -252,7 +254,7 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
 }
 .match-header-inner {
   max-width: 1200px; margin: 0 auto; padding: 0 20px;
-  min-height: 88px; display: flex; align-items: center; gap: 16px;
+  height: 88px; display: flex; align-items: center; gap: 16px;
 }
 
 .back-btn {
@@ -289,6 +291,11 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
   font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 800; color: white;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.02em;
 }
+.match-team-tla {
+  display: none;
+  font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 800; color: white;
+  letter-spacing: -.01em;
+}
 .match-team-pos {
   font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 700; padding: 2px 8px;
   border-radius: 4px; display: inline-block; color: white;
@@ -323,6 +330,12 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
   display: flex; overflow-x: auto; scrollbar-width: none;
 }
 .tab-nav-inner::-webkit-scrollbar { display: none; }
+.tab-nav-fade {
+  display: none;
+  position: absolute; right: 0; top: 0; bottom: 0; width: 40px;
+  background: linear-gradient(to right, transparent, var(--surface));
+  pointer-events: none; z-index: 1;
+}
 
 .tab-btn {
   background: none; border: none; border-bottom: 3px solid transparent;
@@ -355,6 +368,21 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
   align-items: start;
   margin-bottom: 28px;
 }
+.main-side-wrap { display: contents; }
+
+.main-team-toggle {
+  display: none;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden; margin-bottom: 16px;
+}
+.main-toggle-btn {
+  flex: 1; padding: 10px; background: none; border: none;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--text-3); cursor: pointer; transition: background .15s, color .15s;
+}
+.main-toggle-btn.active { background: var(--surface); color: var(--text); }
+
+.name-tla { display: none; }
 
 /* Section card */
 .section-card {
@@ -957,10 +985,10 @@ h1, h2, h3, h4, .section-title, .match-team-name, .brand {
 /* Checked-off state — greyed out overlay */
 .warmups-player-card.checked-off .warmups-player-img::after {
   content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.55);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; z-index: 3;
 }
 .warmups-player-card.checked-off .warmups-player-img::before {
-  content: '✓'; position: absolute; inset: 0; z-index: 2;
+  content: '✓'; position: absolute; inset: 0; z-index: 4;
   display: flex; align-items: center; justify-content: center;
   font-size: 28px; font-weight: 800; color: white; opacity: .9;
 }
@@ -1172,13 +1200,65 @@ body.edit-mode .editable {
 }
 
 @media (max-width: 640px) {
-  .match-team-name { font-size: 15px; }
-  .match-venue { display: none; }
+  /* Header */
+  .match-team-name  { display: none; }
+  .match-team-tla   { display: block; }
+  .match-team-badge { width: 32px; height: 32px; }
+  .match-vs         { min-width: 50px; }
+  .match-venue      { display: none; }
+  .match-header-inner { padding: 0 8px; gap: 6px; height: 72px; }
+  .match-team-pos   { display: none; }
+  .edit-btn-label   { display: none; }
+  .edit-btn         { padding: 8px 10px; }
+  .match-comp-badge { font-size: 9px; padding: 2px 5px; }
+  .match-comp-badge::before { content: attr(data-mobile); }
+  .match-comp-badge > * { display: none; }
+  .match-comp-badge { font-size: 0; }
+  .match-comp-badge::before { font-size: 9px; }
+  .match-date-time  { font-size: 0; }
+  .match-date-time::before { content: attr(data-mobile); font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); }
+  .tab-nav { top: 72px; }
+
+  /* Fixture list — TLA via pseudo-content, hide comp pill */
+  .fixture-card-comp { display: none; }
+  .fixture-team-name { font-size: 0; }
+  .fixture-team-name::before { content: attr(data-tla); font-size: 13px; font-weight: 700; }
+  .fixture-team-pos  { display: none; }
+  .fixture-card-venue { display: none; }
+
+  /* Manager card — stack kits below, show images only */
+  .manager-card { flex-wrap: wrap; }
+  .manager-kit-display { order: 3; width: 100%; display: flex; justify-content: flex-start; padding-top: 8px; }
+  .manager-kits-wrap   { order: 4; width: 100%; flex-direction: row; gap: 6px; align-items: center; padding-top: 4px; }
+  .manager-kits        { flex-direction: row; gap: 8px; }
+  .kit-swatch          { flex-direction: column; gap: 0; }
+  .kit-label, .kit-label-unset, .kit-color-pair { display: none; }
+  .kit-img             { width: 36px; height: auto; }
+  .kit-large           { height: 64px; }
+
+  /* Production tab */
+  .prod-team-name { font-size: 0 !important; }
+  .prod-team-name::before { content: attr(data-tla); font-size: 14px; font-weight: 800; font-family: Inter, sans-serif; }
+  .prod-team-comp { display: none; }
+
+  /* In-game — TLA only */
+  .ig-score-team-name .name-full { display: none; }
+  .ig-lineup-head .name-full { display: none; }
+
+  /* Other */
   .key-players-grid  { grid-template-columns: 1fr; }
   .warmups-xi-grid   { grid-template-columns: repeat(3, 1fr); }
   .warmups-subs-grid { grid-template-columns: repeat(4, 1fr); }
   .squad-grid        { grid-template-columns: repeat(3, 1fr); }
   .modal-field-row   { flex-direction: column; }
+}
+
+@media (max-width: 600px) {
+  .main-team-toggle { display: flex; }
+  .main-grid { display: block; }
+  .main-side-wrap { display: block; }
+  .main-side-wrap.hidden { display: none; }
+  .tab-nav-fade { display: block; }
 }
 
 
